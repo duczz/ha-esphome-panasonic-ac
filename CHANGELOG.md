@@ -4,11 +4,12 @@
 
 ### Breaking Changes
 
-- **ESPHome 2026.4+ required**: `custom_fan_mode` and `custom_preset` are now private members on the Climate class. If you access them in YAML lambdas, replace:
-  - `.custom_fan_mode.has_value()` → `.get_custom_fan_mode() != nullptr`
-  - `.custom_fan_mode.value()` → `.get_custom_fan_mode()`
-  - `.custom_preset.has_value()` → `.get_custom_preset() != nullptr`
-  - `.custom_preset.value()` → `.get_custom_preset()`
+- **ESPHome 2026.4+ required**: `custom_fan_mode` and `custom_preset` are now private members on the Climate class. The getters return `StringRef` instead of `optional<std::string>`. If you access them in YAML lambdas, replace:
+  - `.custom_fan_mode.has_value()` → `!.get_custom_fan_mode().empty()`
+  - `.custom_fan_mode.value()` → `.get_custom_fan_mode()` (returns `StringRef`, can be compared with `"..."` directly)
+  - `.custom_preset.has_value()` → `!.get_custom_preset().empty()`
+  - `.custom_preset.value()` → `.get_custom_preset()` (returns `StringRef`, can be compared with `"..."` directly)
+  - **Do NOT compare with `nullptr`** — `StringRef` comparison with `nullptr` causes a crash (Load access fault)
 
 ### Fixed
 
