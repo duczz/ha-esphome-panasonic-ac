@@ -4,6 +4,7 @@
 #include "esphome/components/select/select.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 
@@ -11,10 +12,10 @@ namespace esphome {
 
 namespace panasonic_ac {
 
-static const char *const VERSION = "2.5.0";
+static const char *const VERSION = "2.6.0";
 
-static const uint8_t BUFFER_SIZE = 128;  // The maximum size of a single packet (both receive and transmit)
-static const uint8_t READ_TIMEOUT = 20;  // The maximum time to wait before considering a packet complete
+static const size_t MAX_RX_BUFFER_SIZE = 256;  // Maximum receive buffer size to prevent OOM from UART noise
+static const uint8_t READ_TIMEOUT = 20;        // The maximum time to wait before considering a packet complete
 
 static const uint8_t MIN_TEMPERATURE = 16;     // Minimum temperature as reported by Panasonic app
 static const uint8_t MAX_TEMPERATURE = 30;     // Maximum temperature as supported by Panasonic app
@@ -41,6 +42,8 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_econavi_switch(switch_::Switch *econavi_switch);
   void set_mild_dry_switch(switch_::Switch *mild_dry_switch);
   void set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor);
+  void set_inside_temperature_sensor(sensor::Sensor *inside_temperature_sensor);
+  void set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor);
 
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
@@ -58,9 +61,11 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   switch_::Switch *mild_dry_switch_ = nullptr;                  // Switch to toggle mild dry mode on/off
   sensor::Sensor *current_temperature_sensor_ = nullptr;        // Sensor to use for current temperature where AC does not report
   sensor::Sensor *current_power_consumption_sensor_ = nullptr;  // Sensor to store current power consumption from queries
+  sensor::Sensor *inside_temperature_sensor_ = nullptr;
+  binary_sensor::BinarySensor *defrost_sensor_ = nullptr;
 
-  size_t vertical_swing_state_;
-  size_t horizontal_swing_state_;
+  size_t vertical_swing_state_ = ~0UL;
+  size_t horizontal_swing_state_ = ~0UL;
 
   int8_t current_temperature_offset_ = 0;  // current temperature offset to compensate internal sensor values
   int8_t outside_temperature_offset_ = 0;  // outside temperature offset to compensate internal sensor values
@@ -71,15 +76,12 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
 
   bool waiting_for_response_ = false;  // Set to true if we are waiting for a response
 
-  // uint8_t receive_buffer_index = 0;     // Current position of the receive buffer
-  // uint8_t receive_buffer[BUFFER_SIZE];  // Stores the packet currently being received
-
   std::vector<uint8_t> rx_buffer_;
 
-  uint32_t init_time_;             // Stores the current time
-  uint32_t last_read_;             // Stores the time at which the last read was done
-  uint32_t last_packet_sent_;      // Stores the time at which the last packet was sent
-  uint32_t last_packet_received_;  // Stores the time at which the last packet was received
+  uint32_t init_time_ = 0;
+  uint32_t last_read_ = 0;
+  uint32_t last_packet_sent_ = 0;
+  uint32_t last_packet_received_ = 0;
 
   climate::ClimateTraits traits() override;
 
@@ -95,6 +97,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_econavi(bool econavi);
   void update_mild_dry(bool mild_dry);
   void update_current_power_consumption(int16_t power);
+  void update_defrost(bool defrost);
 
   virtual void on_horizontal_swing_change(const StringRef &swing) = 0;
   virtual void on_vertical_swing_change(const StringRef &swing) = 0;
@@ -105,7 +108,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
 
   climate::ClimateAction determine_action();
 
-  void log_packet(std::vector<uint8_t> data, bool outgoing = false);
+  void log_packet(const std::vector<uint8_t> &data, bool outgoing = false);
 };
 
 }  // namespace panasonic_ac

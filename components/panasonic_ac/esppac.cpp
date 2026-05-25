@@ -22,17 +22,16 @@ climate::ClimateTraits PanasonicAC::traits() {
   traits.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT_COOL, climate::CLIMATE_MODE_COOL,
                               climate::CLIMATE_MODE_HEAT, climate::CLIMATE_MODE_FAN_ONLY, climate::CLIMATE_MODE_DRY});
 
-  traits.set_supported_custom_fan_modes({"Automatic", "1", "2", "3", "4", "5"});
-
   traits.set_supported_swing_modes({climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_BOTH,
                                     climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL});
-
-  traits.set_supported_custom_presets({"Normal", "Powerful", "Quiet"});
 
   return traits;
 }
 
 void PanasonicAC::setup() {
+  this->set_supported_custom_fan_modes({"Automatic", "1", "2", "3", "4", "5"});
+  this->set_supported_custom_presets({"Normal", "Powerful", "Quiet"});
+
   // Initialize times
   this->init_time_ = millis();
   this->last_packet_sent_ = millis();
@@ -47,10 +46,11 @@ void PanasonicAC::loop() {
 void PanasonicAC::read_data() {
   while (available())  // Read while data is available
   {
-    // if (this->receive_buffer_index >= BUFFER_SIZE) {
-    //   ESP_LOGE(TAG, "Receive buffer overflow");
-    //   receiveBufferIndex = 0;
-    // }
+    if (this->rx_buffer_.size() >= MAX_RX_BUFFER_SIZE) {
+      ESP_LOGE(TAG, "Receive buffer overflow, clearing");
+      this->rx_buffer_.clear();
+      break;
+    }
 
     uint8_t c;
     this->read_byte(&c);  // Store in receive buffer
@@ -86,6 +86,11 @@ void PanasonicAC::update_current_temperature(int8_t temperature) {
   }
 
   this->current_temperature = temperature;
+
+  if (this->inside_temperature_sensor_ != nullptr && this->inside_temperature_sensor_->state != temperature) {
+    this->inside_temperature_sensor_->publish_state(temperature);
+  }
+
   ESP_LOGV(TAG, "Current temperature incl. offset: %d", temperature);
 }
 
@@ -160,21 +165,34 @@ climate::ClimateAction PanasonicAC::determine_action() {
     return climate::CLIMATE_ACTION_FAN;
   } else if (this->mode == climate::CLIMATE_MODE_DRY) {
     return climate::CLIMATE_ACTION_DRYING;
-  } else if ((this->mode == climate::CLIMATE_MODE_COOL || this->mode == climate::CLIMATE_MODE_HEAT_COOL) &&
-             this->current_temperature + TEMPERATURE_TOLERANCE >= this->target_temperature) {
-    return climate::CLIMATE_ACTION_COOLING;
-  } else if ((this->mode == climate::CLIMATE_MODE_HEAT || this->mode == climate::CLIMATE_MODE_HEAT_COOL) &&
-             this->current_temperature - TEMPERATURE_TOLERANCE <= this->target_temperature) {
-    return climate::CLIMATE_ACTION_HEATING;
-  } else {
+  } else if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
+    if (this->current_temperature > this->target_temperature + TEMPERATURE_TOLERANCE)
+      return climate::CLIMATE_ACTION_COOLING;
+    if (this->current_temperature < this->target_temperature - TEMPERATURE_TOLERANCE)
+      return climate::CLIMATE_ACTION_HEATING;
+    return climate::CLIMATE_ACTION_IDLE;
+  } else if (this->mode == climate::CLIMATE_MODE_COOL) {
+    if (this->current_temperature >= this->target_temperature)
+      return climate::CLIMATE_ACTION_COOLING;
+    return climate::CLIMATE_ACTION_IDLE;
+  } else if (this->mode == climate::CLIMATE_MODE_HEAT) {
+    if (this->current_temperature <= this->target_temperature)
+      return climate::CLIMATE_ACTION_HEATING;
     return climate::CLIMATE_ACTION_IDLE;
   }
+  return climate::CLIMATE_ACTION_IDLE;
 }
 
 void PanasonicAC::update_current_power_consumption(int16_t power) {
   if (this->current_power_consumption_sensor_ != nullptr && this->current_power_consumption_sensor_->state != power) {
     this->current_power_consumption_sensor_->publish_state(
         power);  // Set current power consumption
+  }
+}
+
+void PanasonicAC::update_defrost(bool defrost) {
+  if (this->defrost_sensor_ != nullptr) {
+    this->defrost_sensor_->publish_state(defrost);
   }
 }
 
@@ -273,11 +291,19 @@ void PanasonicAC::set_current_power_consumption_sensor(sensor::Sensor *current_p
   this->current_power_consumption_sensor_ = current_power_consumption_sensor;
 }
 
+void PanasonicAC::set_inside_temperature_sensor(sensor::Sensor *inside_temperature_sensor) {
+  this->inside_temperature_sensor_ = inside_temperature_sensor;
+}
+
+void PanasonicAC::set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor) {
+  this->defrost_sensor_ = defrost_sensor;
+}
+
 /*
  * Debugging
  */
 
-void PanasonicAC::log_packet(std::vector<uint8_t> data, bool outgoing) {
+void PanasonicAC::log_packet(const std::vector<uint8_t> &data, bool outgoing) {
   if (outgoing) {
     ESP_LOGV(TAG, "TX: %s", format_hex_pretty(data).c_str());
   } else {

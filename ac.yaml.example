@@ -25,7 +25,7 @@ uart:
   parity: EVEN
 
 external_components:
-  source: github://DomiStyle/esphome-panasonic-ac
+  source: github://duczz/ha-esphome-panasonic-ac
   components: [panasonic_ac]
 
 
@@ -44,6 +44,10 @@ climate:
       name: Panasonic AC Vertical Swing Mode
     outside_temperature:
       name: Panasonic AC Outside Temperature
+    inside_temperature:
+      name: Panasonic AC Inside Temperature
+    defrost_sensor:
+      name: Panasonic AC Defrost Status
 
     # Enable as needed
     # eco_switch:

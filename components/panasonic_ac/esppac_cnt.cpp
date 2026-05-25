@@ -328,30 +328,37 @@ void PanasonicACCNT::set_data(bool set) {
   this->update_target_temperature((int8_t) this->data[1]);
 
   if (set) {
-    // Also set current and outside temperature
-    // 128 means not supported
-    if (this->current_temperature_sensor_ == nullptr) {
-      if (this->rx_buffer_[18] != 0x80)
-        this->update_current_temperature((int8_t) this->rx_buffer_[18]);
-      else if (this->rx_buffer_[21] != 0x80)
-        this->update_current_temperature((int8_t) this->rx_buffer_[21]);
-      else
-        ESP_LOGV(TAG, "Current temperature is not supported");
+    if (this->rx_buffer_.size() < 23) {
+      ESP_LOGW(TAG, "Poll response too short for extended data");
+    } else {
+      if (this->current_temperature_sensor_ == nullptr) {
+        if (this->rx_buffer_[18] != 0x80)
+          this->update_current_temperature((int8_t) this->rx_buffer_[18]);
+        else if (this->rx_buffer_[21] != 0x80)
+          this->update_current_temperature((int8_t) this->rx_buffer_[21]);
+        else
+          ESP_LOGV(TAG, "Current temperature is not supported");
+      }
+
+      if (this->outside_temperature_sensor_ != nullptr) {
+        if (this->rx_buffer_[19] != 0x80)
+          this->update_outside_temperature((int8_t) this->rx_buffer_[19]);
+        else if (this->rx_buffer_[22] != 0x80)
+          this->update_outside_temperature((int8_t) this->rx_buffer_[22]);
+        else
+          ESP_LOGV(TAG, "Outside temperature is not supported");
+      }
     }
 
-    if (this->outside_temperature_sensor_ != nullptr) {
-      if (this->rx_buffer_[19] != 0x80)
-        this->update_outside_temperature((int8_t) this->rx_buffer_[19]);
-      else if (this->rx_buffer_[22] != 0x80)
-        this->update_outside_temperature((int8_t) this->rx_buffer_[22]);
-      else
-        ESP_LOGV(TAG, "Outside temperature is not supported");
-    }
-
-    if (this->current_power_consumption_sensor_ != nullptr) {
+    if (this->current_power_consumption_sensor_ != nullptr && this->rx_buffer_.size() >= 31) {
       uint16_t power_consumption = determine_power_consumption(
           (int8_t) this->rx_buffer_[28], (int8_t) this->rx_buffer_[29], (int8_t) this->rx_buffer_[30]);
       this->update_current_power_consumption(power_consumption);
+    }
+
+    if (this->defrost_sensor_ != nullptr && this->rx_buffer_.size() >= 15) {
+      bool defrost = (this->rx_buffer_[14] == 0x02);
+      update_defrost(defrost);
     }
   }
 
@@ -560,10 +567,10 @@ void PanasonicACCNT::on_nanoex_change(bool state) {
 
   if (state) {
     ESP_LOGV(TAG, "Turning nanoex on");
-    this->cmd[5] = (this->cmd[5] & 0x0F) + 0x40;
+    this->cmd[5] |= 0x40;
   } else {
     ESP_LOGV(TAG, "Turning nanoex off");
-    this->cmd[5] = (this->cmd[5] & 0x0F);
+    this->cmd[5] &= ~0x40;
   }
 }
 
@@ -600,10 +607,10 @@ void PanasonicACCNT::on_econavi_change(bool state) {
 
   if (state) {
     ESP_LOGV(TAG, "Turning econavi mode on");
-    this->cmd[5] = 0x10;
+    this->cmd[5] |= 0x10;
   } else {
     ESP_LOGV(TAG, "Turning econavi mode off");
-    this->cmd[5] = 0x00;
+    this->cmd[5] &= ~0x10;
   }
 }
 

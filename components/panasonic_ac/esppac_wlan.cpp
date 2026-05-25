@@ -31,6 +31,13 @@ void PanasonicACWLAN::loop() {
   {
     log_packet(this->rx_buffer_);
 
+    if (this->rx_buffer_[0] == 0x70 && this->rx_buffer_.size() >= 15) {
+      bool defrost = (this->rx_buffer_[14] == 0x02);
+      update_defrost(defrost);
+      this->rx_buffer_.clear();
+      return;
+    }
+
     if (!verify_packet())  // Verify length, header, counter and checksum
       return;
 
@@ -474,10 +481,11 @@ void PanasonicACWLAN::handle_packet() {
       // then offset by pair length (i * 4)
       int currentIndex = (4 * 3) + (i * 4);
 
-      // 0 = Header
-      // 1 = Data
-      // 2 = Data
-      // 3 = ?
+      if (currentIndex + 2 >= (int) this->rx_buffer_.size()) {
+        ESP_LOGW(TAG, "Report pair %d out of bounds", i);
+        break;
+      }
+
       switch (this->rx_buffer_[currentIndex]) {
         case 0x80:  // Power mode
           switch (this->rx_buffer_[currentIndex + 2]) {
