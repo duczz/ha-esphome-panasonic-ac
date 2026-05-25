@@ -6,7 +6,6 @@
 
 [![ESPHome][esphome-badge]][esphome-url]
 [![Home Assistant][ha-badge]][ha-url]
-[![License][license-badge]](LICENSE)
 
 </div>
 
@@ -182,4 +181,3 @@ Examples:
 [esphome-url]: https://esphome.io/
 [ha-badge]: https://img.shields.io/badge/Home%20Assistant-2026.4%2B-blue?style=for-the-badge&logo=home-assistant
 [ha-url]: https://www.home-assistant.io/
-[license-badge]: https://img.shields.io/github/license/duczz/ha-esphome-panasonic-ac.svg?style=for-the-badge
