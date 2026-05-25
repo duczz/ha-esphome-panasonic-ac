@@ -50,8 +50,9 @@ For the full version history see [CHANGELOG.md](CHANGELOG.md).
 - [Requirements](#-requirements)
 - [Software installation](#-software-installation)
 - [Configuration](#️-configuration)
-  - [Supported features](#setting-supported-features)
-  - [Temperature offsets](#setting-temperature-offsets)
+  - [All options](#all-options)
+  - [Example configuration](#example-configuration)
+  - [Temperature offsets](#temperature-offsets)
 - [Hardware installation](#-hardware-installation)
 
 ---
@@ -119,53 +120,71 @@ external_components:
 
 ## ⚙️ Configuration
 
-### Setting supported features
+### All options
 
-Since Panasonic ACs support different features you can comment out the lines at the bottom of your `ac.yaml`:
+| Option | Type | Availability | Description |
+|--------|------|:------------:|-------------|
+| `type` | string | **required** | `cnt` (CZ-TACG1) or `wlan` (DNSK-P11) |
+| `name` | string | **required** | Entity name in Home Assistant |
+| `horizontal_swing_select` | Select | CNT + WLAN | Manual horizontal swing position (auto, left, left_center, center, right_center, right) |
+| `vertical_swing_select` | Select | CNT + WLAN | Manual vertical swing position (swing, auto, up, up_center, center, down_center, down) |
+| `outside_temperature` | Sensor | CNT + WLAN | Outside temperature as reported by the AC |
+| `inside_temperature` | Sensor | CNT + WLAN | Inside temperature from the AC's internal sensor, as standalone entity |
+| `nanoex_switch` | Switch | CNT + WLAN | Toggle Panasonic nanoeX air purification |
+| `eco_switch` | Switch | CNT only | Toggle energy-saving mode (simple power reduction) |
+| `econavi_switch` | Switch | CNT only | Toggle Econavi (sensor-based activity detection that auto-adjusts power) |
+| `mild_dry_switch` | Switch | CNT only | Toggle mild dry cooling (reduced dehumidification) |
+| `current_power_consumption` | Sensor | CNT only | Estimated power consumption in watts |
+| `defrost_sensor` | Binary Sensor | CNT + WLAN | Reports `on` when the AC is in defrost mode |
+| `current_temperature_offset` | int | CNT + WLAN | Fixed offset for inside temperature (-15 to +15) |
+| `outside_temperature_offset` | int | CNT + WLAN | Fixed offset for outside temperature (-15 to +15) |
+| `current_temperature_sensor` | Sensor ID | CNT only | Use an external sensor for current temperature instead of the AC's internal sensor |
 
-```yaml
-  # Enable as needed
-  # eco_switch:
-  #   name: Panasonic AC Eco Switch
-  # nanoex_switch:
-  #   name: Panasonic AC NanoeX Switch
-  # mild_dry_switch:
-  #   name: Panasonic AC Mild Dry Switch
-  # econavi_switch:
-  #   name: Panasonic AC Econavi Switch
-  # current_power_consumption:
-  #   name: Panasonic AC Power Consumption
-  # inside_temperature:
-  #   name: Panasonic AC Inside Temperature
-  # defrost_sensor:
-  #   name: Panasonic AC Defrost Status
-```
+> **Eco vs. Econavi:** Eco is a simple power reduction mode. Econavi is Panasonic's smart sensor feature that detects room activity (human presence, sunlight) and auto-adjusts power accordingly. They are independent features.
 
-In order to find out which features are supported by your AC, check the remote that came with it. Please note that eco switch and mild dry switch are not supported on DNSK-P11.
+> **Enabling unsupported features can lead to undefined behavior. Check your remote or manual first.**
 
-**Enabling unsupported features can lead to undefined behavior and may damage your AC. Make sure to check your remote or manual first.**
+> **`current_power_consumption` is an estimated value by the AC, not a measured value.**
 
-**current_power_consumption is just an ESTIMATED value by the AC**
-
-### Setting temperature offsets
-
-As the internal sensors reading might not reflect the actual temperature in the room or outside, you can optionally define a fixed offset for both sensors.
-This offset is internally applied to both, the reported temperature in ESPHome/HomeAssistant as well as to the target temperature. Any shown values always include the defined offset.
-
-- Temperature readings of the AC will be reported as (reading + offset)
-- Target temperatures will be set as (target - offset)
+### Example configuration
 
 ```yaml
-    # Adapt according to your measurements
+climate:
+  - platform: panasonic_ac
+    type: cnt
+    name: "Living Room AC"
+    horizontal_swing_select:
+      name: "Horizontal Swing"
+    vertical_swing_select:
+      name: "Vertical Swing"
+    outside_temperature:
+      name: "Outside Temperature"
+    inside_temperature:
+      name: "Inside Temperature"
+    nanoex_switch:
+      name: "NanoeX"
+    econavi_switch:
+      name: "Econavi"
+    current_power_consumption:
+      name: "Power Consumption"
+    defrost_sensor:
+      name: "Defrost"
     current_temperature_offset: 0
     outside_temperature_offset: 0
 ```
 
-Examples:
-- If the temperature is actually higher than measured by the AC, set the difference as a positive offset.
-  - E.g. actual temperature = 23°, AC measured temperature = 20° --> offset = 3°
-- If the temperature is actually lower than measured by the AC, set the difference as a negative offset.
-  - E.g. actual temperature = 20°, AC measured temperature = 22° --> offset = -2°
+### Temperature offsets
+
+The AC's internal sensors may not reflect the actual room temperature. You can define a fixed offset for both inside and outside temperature.
+
+The offset is applied to both reported values and target temperature commands:
+- Reported temperature = AC reading + offset
+- Target sent to AC = user target - offset
+
+| Situation | Example | Offset |
+|-----------|---------|--------|
+| Room is warmer than AC reports | Actual 23°, AC reads 20° | `+3` |
+| Room is cooler than AC reports | Actual 20°, AC reads 22° | `-2` |
 
 ---
 
