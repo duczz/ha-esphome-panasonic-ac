@@ -116,6 +116,12 @@ external_components:
     components: [panasonic_ac]
 ```
 
+### Clearing the ESPHome cache
+
+ESPHome caches external components aggressively. After switching to this fork (or after updates), clear the cache before compiling: click **Clean Build Files** in the ESPHome dashboard (three-dot menu on your device).
+
+If your build completes in under 15 seconds, the cache was NOT cleared.
+
 ---
 
 ## ⚙️ Configuration
