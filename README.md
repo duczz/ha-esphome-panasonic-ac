@@ -20,7 +20,7 @@ An open source alternative for the Panasonic wi-fi adapter that works locally wi
 This is a maintained fork of [DomiStyle/esphome-panasonic-ac](https://github.com/DomiStyle/esphome-panasonic-ac) with ESPHome 2026.x compatibility, bug fixes and new features.
 
 ### Compatibility
-- ⚡ **ESPHome 2026.4+ support** — custom fan modes and presets are registered via both `setup()` (new API) and `traits()` (deprecated). The `setup()`-only path does not work in ESPHome 2026.5.x (`ClimateCall::set_fan_mode()` does not find modes registered that way). Both registrations remain until ESPHome fixes this or removes the deprecated API in 2026.11.0.
+- ⚡ **ESPHome 2026.4+ support** — custom fan modes and presets are registered via `setup()` (new API). The deprecated `traits()` registration has been removed after confirming `setup()`-only works in ESPHome 2026.5.1. No more deprecation warnings during build.
 
 ### New features
 - 🌬️ **Auto Comfort preset** (CNT) — adds the Auto Comfort preset mode alongside Normal, Powerful and Quiet. Reverse-engineered from UART logs
@@ -29,6 +29,8 @@ This is a maintained fork of [DomiStyle/esphome-panasonic-ac](https://github.com
 - 🔧 **Temperature offset for WLAN** — `current_temperature_offset` now works for both CNT and WLAN (was CNT-only)
 
 ### Bug fixes
+- 🐛 **CNT climate action always "Off"** — `determine_action()` was never called in the CNT poll handler, so Home Assistant always showed "Off (Cooling)" instead of the actual action (Cooling, Heating, Idle)
+- 🐛 **Preset reset mask missing Auto Comfort** (CNT) — changing fan mode used mask `0xF0` which didn't clear the Auto Comfort bit; fixed to `0xD0`
 - 🐛 **Econavi toggle destroying preset + nanoex state** (CNT) — `on_econavi_change` overwrote the entire shared byte instead of toggling only its bit
 - 🐛 **Nanoex toggle destroying econavi state** (CNT) — `on_nanoex_change` cleared the econavi bit when toggling
 - 🐛 **`determine_action()` broken in HEAT_COOL mode** — never returned IDLE and showed COOLING even below target temperature. Reworked with proper deadband logic

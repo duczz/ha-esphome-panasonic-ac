@@ -5,6 +5,13 @@
 ### Added
 
 - **Auto Comfort preset** (CNT): Added the Auto Comfort preset to the climate entity. Selecting it sends bit `0x20` in the preset byte; switching back to Normal/Powerful/Quiet clears it correctly via the `0xD0` mask. Reverse-engineered from UART logs by comparing the AC's response when the IR remote's Auto Comfort button was pressed.
+- **Expanded `ac.yaml.example`**: Now includes substitutions, `esp-idf` framework, template selects for Fan Mode / Mode / Preset Mode with `on_state` sync lambdas, and a `refresh: always` hint for cache issues.
+
+### Fixed
+
+- **Fix CNT climate action always showing "Off"**: `determine_action()` was never called in the CNT poll handler — the action stayed at the default `CLIMATE_ACTION_OFF` regardless of mode and temperature. Home Assistant now correctly shows "Cooling", "Heating", "Idle" etc.
+- **Fix preset reset mask when changing fan mode** (CNT): The fan mode change handler used mask `0xF0` to reset the preset, which did not clear the Auto Comfort bit (`0x20`). Changed to `0xD0` to match the preset handler.
+- **Remove deprecated `traits()` registration**: Custom fan modes and presets were registered in both `traits()` (deprecated) and `setup()` (new API) as a workaround. Testing confirmed `setup()`-only works correctly in ESPHome 2026.5.1 — the deprecated `traits()` calls have been removed. No more deprecation warnings during build.
 
 ### Notes
 
