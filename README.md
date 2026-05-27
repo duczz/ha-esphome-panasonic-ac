@@ -23,6 +23,7 @@ This is a maintained fork of [DomiStyle/esphome-panasonic-ac](https://github.com
 - ⚡ **ESPHome 2026.4+ support** — custom fan modes and presets are registered via both `setup()` (new API) and `traits()` (deprecated). The `setup()`-only path does not work in ESPHome 2026.5.x (`ClimateCall::set_fan_mode()` does not find modes registered that way). Both registrations remain until ESPHome fixes this or removes the deprecated API in 2026.11.0.
 
 ### New features
+- 🌬️ **Auto Comfort preset** (CNT) — adds the Auto Comfort preset mode alongside Normal, Powerful and Quiet. Reverse-engineered from UART logs
 - 🌡️ **Inside temperature sensor** — exposes the AC's internal temperature reading as a standalone entity for automations, dashboards and history graphs
 - ❄️ **Defrost sensor** — binary sensor that reports when the AC unit is in defrost mode (CNT + WLAN)
 - 🔧 **Temperature offset for WLAN** — `current_temperature_offset` now works for both CNT and WLAN (was CNT-only)
@@ -167,7 +168,7 @@ If your build completes in under 15 seconds, the cache was NOT cleared.
 | `vertical_swing_select` | Select | CNT + WLAN | Manual vertical swing position (swing, auto, up, up_center, center, down_center, down) |
 | `outside_temperature` | Sensor | CNT + WLAN | Outside temperature as reported by the AC |
 | `inside_temperature` | Sensor | CNT + WLAN | Inside temperature from the AC's internal sensor, as standalone entity |
-| `nanoex_switch` | Switch | CNT + WLAN | Toggle Panasonic nanoeX air purification |
+| `nanoex_switch` | Switch | CNT + WLAN | Toggle Panasonic nanoeX air purification. **nanoe-G is not supported** — the CN-CNT protocol does not expose it (see [nanoe-G note](#nanoe-g)) |
 | `eco_switch` | Switch | CNT only | Toggle energy-saving mode (simple power reduction) |
 | `econavi_switch` | Switch | CNT only | Toggle Econavi (sensor-based activity detection that auto-adjusts power) |
 | `mild_dry_switch` | Switch | CNT only | Toggle mild dry cooling (reduced dehumidification) |
@@ -178,6 +179,8 @@ If your build completes in under 15 seconds, the cache was NOT cleared.
 | `current_temperature_sensor` | Sensor ID | CNT only | Use an external sensor for current temperature instead of the AC's internal sensor |
 
 > **Eco vs. Econavi:** Eco is a simple power reduction mode. Econavi is Panasonic's smart sensor feature that detects room activity (human presence, sunlight) and auto-adjusts power accordingly. They are independent features.
+
+> <a name="nanoe-g"></a>**nanoe-G is not supported on CZ-TACG1 (CNT):** The CN-CNT serial protocol does not transmit the nanoe-G state — pressing the nanoe-G button on the IR remote produces no change in the UART data stream. It may be accessible via the DNSK-P11 WLAN protocol (CN-WLAN) since the Comfort Cloud API includes a dedicated NanoeMode field, but this is unconfirmed and not implemented.
 
 > **Enabling unsupported features can lead to undefined behavior. Check your remote or manual first.**
 

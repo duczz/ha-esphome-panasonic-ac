@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.6.1 (2026-05-27)
+
+### Added
+
+- **Auto Comfort preset** (CNT): Added the Auto Comfort preset to the climate entity. Selecting it sends bit `0x20` in the preset byte; switching back to Normal/Powerful/Quiet clears it correctly via the `0xD0` mask. Reverse-engineered from UART logs by comparing the AC's response when the IR remote's Auto Comfort button was pressed.
+
+### Notes
+
+- **nanoe-G is not supported on CZ-TACG1 (CNT)**: The CN-CNT serial protocol does not expose nanoe-G. Pressing the nanoe-G button on the IR remote produces no change in the UART data stream — the protocol byte is identical whether nanoe-G is active or not. The Comfort Cloud API includes nanoe-G (NanoeMode values `3`/ModeG and `4`/All), which suggests it may be accessible via the DNSK-P11 WLAN protocol (CN-WLAN), but this is unconfirmed and not implemented.
+
 ## 2.6.0 (2026-05-24)
 
 ### Breaking Changes
