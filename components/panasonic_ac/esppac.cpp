@@ -25,6 +25,12 @@ climate::ClimateTraits PanasonicAC::traits() {
   traits.set_supported_swing_modes({climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_BOTH,
                                     climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL});
 
+  // Also register here for ClimateCall::set_fan_mode() routing (setup() path alone
+  // does not work in ESPHome 2026.5.x despite being the documented new API).
+  // Remove when ESPHome fixes find_custom_fan_mode_ or removes these in 2026.11.0.
+  traits.set_supported_custom_fan_modes({"Automatic", "1", "2", "3", "4", "5"});
+  traits.set_supported_custom_presets({"Normal", "Powerful", "Quiet"});
+
   return traits;
 }
 

@@ -10,10 +10,11 @@
   - `.custom_preset.has_value()` → `!.get_custom_preset().empty()`
   - `.custom_preset.value()` → `.get_custom_preset()` (returns `StringRef`, can be compared with `"..."` directly)
   - **Do NOT compare with `nullptr`** — `StringRef` comparison with `nullptr` causes a crash (Load access fault)
+- **Clear ESPHome build cache after migrating**: Click **Clean Build Files** in the ESPHome dashboard (three-dot menu on your device) before compiling. Without this, ESPHome may use a cached old version of the component and custom fan modes / presets will not work correctly.
 
 ### Fixed
 
-- **Fix deprecated ClimateTraits setters** (upstream [#183](https://github.com/DomiStyle/esphome-panasonic-ac/issues/183), [#187](https://github.com/DomiStyle/esphome-panasonic-ac/pull/187)): Moved `set_supported_custom_fan_modes()` and `set_supported_custom_presets()` from `traits()` to `setup()`, calling them on the Climate entity instead of ClimateTraits. Without this fix, compilation will fail starting with ESPHome 2026.11.0.
+- **Fix deprecated ClimateTraits setters** (upstream [#183](https://github.com/DomiStyle/esphome-panasonic-ac/issues/183), [#187](https://github.com/DomiStyle/esphome-panasonic-ac/pull/187)): Added `set_supported_custom_fan_modes()` and `set_supported_custom_presets()` in `setup()` on the Climate entity (new API). The deprecated `traits()` registration is kept as well because `ClimateCall::set_fan_mode()` routing does not find modes registered via `setup()` alone in ESPHome 2026.5.x. Both registrations will remain until ESPHome fixes this or removes the deprecated API in 2026.11.0.
 - **Fix temperature offset not working for WLAN variant** (upstream [#178](https://github.com/DomiStyle/esphome-panasonic-ac/pull/178)): `current_temperature_offset` was only available for CNT devices. It is now part of the common schema and works for both CNT and WLAN.
 - **Fix econavi toggle destroying preset and nanoex state** (CNT): `on_econavi_change` overwrote the entire shared byte instead of toggling only the econavi bit. Turning econavi on would reset preset to Normal and disable nanoex.
 - **Fix nanoex toggle destroying econavi state** (CNT): `on_nanoex_change` cleared the upper nibble of the shared byte, disabling econavi whenever nanoex was toggled.

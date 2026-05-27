@@ -20,7 +20,7 @@ An open source alternative for the Panasonic wi-fi adapter that works locally wi
 This is a maintained fork of [DomiStyle/esphome-panasonic-ac](https://github.com/DomiStyle/esphome-panasonic-ac) with ESPHome 2026.x compatibility, bug fixes and new features.
 
 ### Compatibility
-- ⚡ **ESPHome 2026.4+ support** — moved deprecated `set_supported_custom_fan_modes()` / `set_supported_custom_presets()` from `ClimateTraits` to the Climate entity (old code will fail to compile starting with ESPHome 2026.11.0)
+- ⚡ **ESPHome 2026.4+ support** — custom fan modes and presets are registered via both `setup()` (new API) and `traits()` (deprecated). The `setup()`-only path does not work in ESPHome 2026.5.x (`ClimateCall::set_fan_mode()` does not find modes registered that way). Both registrations remain until ESPHome fixes this or removes the deprecated API in 2026.11.0.
 
 ### New features
 - 🌡️ **Inside temperature sensor** — exposes the AC's internal temperature reading as a standalone entity for automations, dashboards and history graphs
@@ -42,9 +42,40 @@ For the full version history see [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
+## 🔄 Migrating from DomiStyle/esphome-panasonic-ac
+
+1. **Change `external_components`** in your YAML:
+   ```yaml
+   external_components:
+     - source:
+         type: git
+         url: https://github.com/duczz/ha-esphome-panasonic-ac
+       components: [panasonic_ac]
+   ```
+
+2. **Clear ESPHome build cache**: Click **Clean Build Files** in the ESPHome dashboard (three-dot menu on your device). Without this, ESPHome uses the cached old component.
+
+3. **Update YAML lambdas** if you access `custom_fan_mode` or `custom_preset` in `on_state` or other lambdas:
+   ```cpp
+   // Old (crashes in ESPHome 2026.x):
+   if (id(ac).custom_fan_mode.has_value()) {
+     std::string fan_mode = id(ac).custom_fan_mode.value();
+
+   // New:
+   auto fan_mode = id(ac).get_custom_fan_mode();
+   if (!fan_mode.empty()) {
+     // fan_mode is a StringRef, compare directly with "..."
+   ```
+   **Do NOT compare with `nullptr`** — `StringRef` comparison with `nullptr` causes a crash.
+
+4. **Compile and flash**.
+
+---
+
 ## Table of Contents
 
 - [What's different](#️-whats-different-from-the-original)
+- [Migrating from DomiStyle](#-migrating-from-domistyleesphome-panasonic-ac)
 - [Features](#-features)
 - [Supported hardware](#-supported-hardware)
 - [Requirements](#-requirements)
