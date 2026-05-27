@@ -484,6 +484,7 @@ void PanasonicACCNT::handle_packet() {
     this->data = std::vector<uint8_t>(this->rx_buffer_.begin() + 2, this->rx_buffer_.begin() + 12);
 
     this->set_data(true);
+    this->action = determine_action();
     this->publish_state();
 
     if (this->state_ != ACState::Ready)
