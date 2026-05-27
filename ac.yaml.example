@@ -1,13 +1,26 @@
+substitutions:
+  devicename: "living-room-ac"
+  friendly_name: "Living Room AC"
+  climate_id: "living_room_ac"
+
 esphome:
-  name: panasonic-ac
+  name: "${devicename}"
+  friendly_name: "${friendly_name}"
   min_version: 2026.4.0
 
 esp32:
   board: nodemcu-32s
+  framework:
+    type: esp-idf
 
 wifi:
-  networks:
-  ap: {}
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name}"
+    password: !secret wifi_password_fallback
+
+captive_portal:
 
 logger:
   level: INFO
@@ -22,44 +35,49 @@ uart:
   rx_pin: GPIO16
   baud_rate: 9600
   parity: EVEN
+  rx_buffer_size: 256
 
 external_components:
   - source:
       type: git
       url: https://github.com/duczz/ha-esphome-panasonic-ac
+      # Add the line below if ESPHome uses a cached old version of the component
+      # (if your build completes in under 15 seconds, the cache was NOT cleared).
+      # Remove after the first successful build.
+      # refresh: always
     components: [panasonic_ac]
 
 climate:
   - platform: panasonic_ac
-    # For CZ-TACG1
-    # type: cnt
-
-    # For DNSK-P11
+    id: "${climate_id}"
+    # For CZ-TACG1 (CN-CNT port):
+    type: cnt
+    # For DNSK-P11 (CN-WLAN port):
     # type: wlan
 
-    name: Panasonic AC
+    name: "Interface"
     horizontal_swing_select:
-      name: Horizontal Swing Mode
+      name: "Horizontal Swing Mode"
     vertical_swing_select:
-      name: Vertical Swing Mode
+      name: "Vertical Swing Mode"
     outside_temperature:
-      name: Outside Temperature
+      name: "Outside Temperature"
     inside_temperature:
-      name: Inside Temperature
+      name: "Inside Temperature"
     defrost_sensor:
-      name: Defrost Status
+      name: "Defrost Status"
 
-    # Enable as needed
-    # eco_switch:
-    #   name: Eco Switch
-    # econavi_switch:
-    #   name: Econavi Switch
+    # Enable as needed — check your remote or manual first
     # nanoex_switch:
-    #   name: NanoeX Switch
+    #   name: "NanoeX"
+    # eco_switch:
+    #   name: "Eco"
+    # econavi_switch:
+    #   name: "Econavi"
     # mild_dry_switch:
-    #   name: Mild Dry Switch
+    #   name: "Mild Dry"
     # current_power_consumption:
-    #   name: Power Consumption
+    #   name: "Power Consumption"
 
     # Adapt according to your measurements
     # current_temperature_offset: 0
@@ -67,3 +85,104 @@ climate:
 
     # Use an external sensor for current temperature (CZ-TACG1 only)
     # current_temperature_sensor: temperature_sensor_id
+
+    # Sync template selects below when AC state changes
+    on_state:
+      then:
+        - lambda: |-
+            auto fan_mode = id(${climate_id}).get_custom_fan_mode();
+            if (!fan_mode.empty()) {
+              if (fan_mode == "Automatic") id(fan_mode_select).publish_state("Auto");
+              else if (fan_mode == "1") id(fan_mode_select).publish_state("1 - Diffuse");
+              else if (fan_mode == "2") id(fan_mode_select).publish_state("2 - Low");
+              else if (fan_mode == "3") id(fan_mode_select).publish_state("3 - Medium");
+              else if (fan_mode == "4") id(fan_mode_select).publish_state("4 - High");
+              else if (fan_mode == "5") id(fan_mode_select).publish_state("5 - Focus");
+            }
+
+            switch (id(${climate_id}).mode) {
+              case climate::CLIMATE_MODE_HEAT_COOL: id(mode_select).publish_state("Heat/Cool"); break;
+              case climate::CLIMATE_MODE_HEAT:      id(mode_select).publish_state("Heat"); break;
+              case climate::CLIMATE_MODE_COOL:      id(mode_select).publish_state("Cool"); break;
+              case climate::CLIMATE_MODE_DRY:       id(mode_select).publish_state("Dry"); break;
+              case climate::CLIMATE_MODE_FAN_ONLY:  id(mode_select).publish_state("Fan Only"); break;
+              case climate::CLIMATE_MODE_OFF:       id(mode_select).publish_state("Off"); break;
+              default: break;
+            }
+
+            auto preset = id(${climate_id}).get_custom_preset();
+            if (!preset.empty()) {
+              if (preset == "Normal")       id(preset_select).publish_state("Normal");
+              else if (preset == "Powerful") id(preset_select).publish_state("Powerful");
+              else if (preset == "Quiet")    id(preset_select).publish_state("Quiet");
+              else if (preset == "Auto Comfort") id(preset_select).publish_state("Auto Comfort");
+            }
+
+select:
+  - platform: template
+    name: "Fan Mode"
+    icon: mdi:fan
+    id: fan_mode_select
+    options:
+      - "Auto"
+      - "1 - Diffuse"
+      - "2 - Low"
+      - "3 - Medium"
+      - "4 - High"
+      - "5 - Focus"
+    initial_option: "Auto"
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto call = id(${climate_id}).make_call();
+          if (x == "Auto")             call.set_fan_mode("Automatic");
+          else if (x == "1 - Diffuse") call.set_fan_mode("1");
+          else if (x == "2 - Low")     call.set_fan_mode("2");
+          else if (x == "3 - Medium")  call.set_fan_mode("3");
+          else if (x == "4 - High")    call.set_fan_mode("4");
+          else if (x == "5 - Focus")   call.set_fan_mode("5");
+          call.perform();
+
+  - platform: template
+    name: "Mode"
+    icon: mdi:auto-mode
+    id: mode_select
+    options:
+      - "Heat/Cool"
+      - "Heat"
+      - "Cool"
+      - "Dry"
+      - "Fan Only"
+      - "Off"
+    initial_option: "Off"
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto call = id(${climate_id}).make_call();
+          if (x == "Heat/Cool") call.set_mode(climate::CLIMATE_MODE_HEAT_COOL);
+          else if (x == "Heat")     call.set_mode(climate::CLIMATE_MODE_HEAT);
+          else if (x == "Cool")     call.set_mode(climate::CLIMATE_MODE_COOL);
+          else if (x == "Dry")      call.set_mode(climate::CLIMATE_MODE_DRY);
+          else if (x == "Fan Only") call.set_mode(climate::CLIMATE_MODE_FAN_ONLY);
+          else if (x == "Off")      call.set_mode(climate::CLIMATE_MODE_OFF);
+          call.perform();
+
+  - platform: template
+    name: "Preset Mode"
+    icon: mdi:tune-variant
+    id: preset_select
+    options:
+      - "Normal"
+      - "Powerful"
+      - "Quiet"
+      - "Auto Comfort"
+    initial_option: "Normal"
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto call = id(${climate_id}).make_call();
+          if (x == "Normal")            call.set_preset("Normal");
+          else if (x == "Powerful")     call.set_preset("Powerful");
+          else if (x == "Quiet")        call.set_preset("Quiet");
+          else if (x == "Auto Comfort") call.set_preset("Auto Comfort");
+          call.perform();
