@@ -29,14 +29,14 @@ climate::ClimateTraits PanasonicAC::traits() {
   // does not work in ESPHome 2026.5.x despite being the documented new API).
   // Remove when ESPHome fixes find_custom_fan_mode_ or removes these in 2026.11.0.
   traits.set_supported_custom_fan_modes({"Automatic", "1", "2", "3", "4", "5"});
-  traits.set_supported_custom_presets({"Normal", "Powerful", "Quiet"});
+  traits.set_supported_custom_presets({"Normal", "Powerful", "Quiet", "Auto Comfort"});
 
   return traits;
 }
 
 void PanasonicAC::setup() {
   this->set_supported_custom_fan_modes({"Automatic", "1", "2", "3", "4", "5"});
-  this->set_supported_custom_presets({"Normal", "Powerful", "Quiet"});
+  this->set_supported_custom_presets({"Normal", "Powerful", "Quiet", "Auto Comfort"});
 
   // Initialize times
   this->init_time_ = millis();

@@ -104,9 +104,10 @@ static const char *determine_horizontal_swing(uint8_t swing) {
 }
 
 static const char *determine_preset(uint8_t preset) {
-  uint8_t nib = (preset >> 0) & 0x0F;  // Right nib for preset (powerful/quiet)
+  if (preset & 0x20)
+    return "Auto Comfort";
 
-  switch (nib) {
+  switch (preset & 0x0F) {
     case 0x02:
       return "Powerful";
     case 0x04:
@@ -299,11 +300,13 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     const auto preset = call.get_custom_preset();
 
     if (preset == "Normal")
-      this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
+      this->cmd[5] = (this->cmd[5] & 0xD0);          // Clear nibble + Auto Comfort bit
     else if (preset == "Powerful")
-      this->cmd[5] = (this->cmd[5] & 0xF0) + 0x02;  // Clear right nib and set powerful mode
+      this->cmd[5] = (this->cmd[5] & 0xD0) + 0x02;   // Clear nibble + Auto Comfort, set Powerful
     else if (preset == "Quiet")
-      this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
+      this->cmd[5] = (this->cmd[5] & 0xD0) + 0x04;   // Clear nibble + Auto Comfort, set Quiet
+    else if (preset == "Auto Comfort")
+      this->cmd[5] = (this->cmd[5] & 0xD0) + 0x20;   // Clear nibble, set Auto Comfort
     else
       ESP_LOGV(TAG, "Unsupported preset requested");
   }
