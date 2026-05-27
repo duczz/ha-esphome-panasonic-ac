@@ -251,7 +251,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
 
     if (this->get_custom_preset() != "Normal") {
       ESP_LOGV(TAG, "Resetting preset");
-      this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
+      this->cmd[5] = (this->cmd[5] & 0xD0);  // Clear preset nibble + Auto Comfort bit
     }
 
     const auto fanMode = call.get_custom_fan_mode();
