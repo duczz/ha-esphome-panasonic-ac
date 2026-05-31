@@ -227,11 +227,15 @@ climate:
 
 ### Temperature offsets
 
-The AC's internal sensors may not reflect the actual room temperature. You can define a fixed offset for both inside and outside temperature.
-
-The offset is applied to both reported values and target temperature commands:
+The AC's internal sensors may not reflect the actual room temperature. You can define a fixed offset for both inside and outside temperature. The offset is applied to both reported values and target temperature commands:
 - Reported temperature = AC reading + offset
 - Target sent to AC = user target - offset
+
+**You have two options for configuring offsets:**
+1. **Static (Fixed) Offset:** Use `current_temperature_offset: 2`. This bakes the offset into the firmware.
+2. **Dynamic (Slider) Offset:** Use `current_temperature_offset_number`. This creates a slider in Home Assistant to change the offset live, without recompiling.
+
+*Note: You do not need to use both. If you only want the slider, you can delete the static `current_temperature_offset` from your YAML. If you use both, the static value acts as the default boot value for the slider!*
 
 | Situation | Example | Offset |
 |-----------|---------|--------|

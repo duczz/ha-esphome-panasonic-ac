@@ -79,9 +79,12 @@ climate:
     # current_power_consumption:
     #   name: "Power Consumption"
 
-    # Adapt according to your measurements
+    # You have two options for temperature offsets (use one or both):
+    # 1. Static offsets (baked into firmware):
     # current_temperature_offset: 0
     # outside_temperature_offset: 0
+    #
+    # 2. Dynamic offsets (shows a slider in Home Assistant to change live):
     # current_temperature_offset_number:
     #   name: "Inside Temperature Offset"
     # outside_temperature_offset_number:
