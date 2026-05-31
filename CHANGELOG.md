@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.6.2 (2026-05-31)
+
+### Added
+
+- **External Temperature Sensor Fallback**: Added a fallback mechanism for the `current_temperature_sensor`. If the external sensor becomes unavailable (e.g., reports `NaN` due to an empty battery or connection loss), the integration will now gracefully fall back to using the AC's internal temperature sensor for its operations until the external sensor recovers. This applies to both CNT and WLAN protocols.
+- **Live Temperature Offset Adjustments** (#179): You can now adjust the `current_temperature_offset` and `outside_temperature_offset` dynamically from Home Assistant without recompiling ESPHome! Use the new `current_temperature_offset_number` and `outside_temperature_offset_number` configuration variables to expose sliders in Home Assistant.
+
 ## 2.6.1 (2026-05-27)
 
 ### Added

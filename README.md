@@ -27,6 +27,8 @@ This is a maintained fork of [DomiStyle/esphome-panasonic-ac](https://github.com
 - 🌡️ **Inside temperature sensor** — exposes the AC's internal temperature reading as a standalone entity for automations, dashboards and history graphs
 - ❄️ **Defrost sensor** — binary sensor that reports when the AC unit is in defrost mode (CNT + WLAN)
 - 🔧 **Temperature offset for WLAN** — `current_temperature_offset` now works for both CNT and WLAN (was CNT-only)
+- 🎚️ **Live Temperature Offsets** — dynamically adjust `current_temperature_offset` and `outside_temperature_offset` from Home Assistant via new number entities without recompiling.
+- 🛡️ **Temperature Sensor Fallback** — if the external `current_temperature_sensor` becomes unavailable (NaN), the integration automatically falls back to the AC's internal temperature sensor.
 
 ### Bug fixes
 - 🐛 **CNT climate action always "Off"** — `determine_action()` was never called in the CNT poll handler, so Home Assistant always showed "Off (Cooling)" instead of the actual action (Cooling, Heating, Idle)
@@ -101,6 +103,8 @@ For the full version history see [CHANGELOG.md](CHANGELOG.md).
 * Inside and outside temperature as standalone sensors
 * Defrost status detection
 * Power consumption monitoring (estimated by AC)
+* Fallback to internal sensor if external temperature sensor fails
+* Live temperature offset adjustment via Home Assistant sliders
 
 ---
 
@@ -178,6 +182,8 @@ If your build completes in under 15 seconds, the cache was NOT cleared.
 | `defrost_sensor` | Binary Sensor | CNT + WLAN | Reports `on` when the AC is in defrost mode |
 | `current_temperature_offset` | int | CNT + WLAN | Fixed offset for inside temperature (-15 to +15) |
 | `outside_temperature_offset` | int | CNT + WLAN | Fixed offset for outside temperature (-15 to +15) |
+| `current_temperature_offset_number` | Number | CNT + WLAN | Exposes a slider to Home Assistant to dynamically change the inside temperature offset |
+| `outside_temperature_offset_number` | Number | CNT + WLAN | Exposes a slider to Home Assistant to dynamically change the outside temperature offset |
 | `current_temperature_sensor` | Sensor ID | CNT only | Use an external sensor for current temperature instead of the AC's internal sensor |
 
 > **Eco vs. Econavi:** Eco is a simple power reduction mode. Econavi is Panasonic's smart sensor feature that detects room activity (human presence, sunlight) and auto-adjusts power accordingly. They are independent features.
@@ -213,6 +219,10 @@ climate:
       name: "Defrost"
     current_temperature_offset: 0
     outside_temperature_offset: 0
+    current_temperature_offset_number:
+      name: "Inside Temperature Offset"
+    outside_temperature_offset_number:
+      name: "Outside Temperature Offset"
 ```
 
 ### Temperature offsets

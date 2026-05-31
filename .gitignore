@@ -9,3 +9,7 @@ venv/
 builds/
 *.py[cod]
 .DS_Store
+
+# Local-only AI assistant notes (gitignored — kein privates Wissen leaken)
+CLAUDE.md
+.claude/

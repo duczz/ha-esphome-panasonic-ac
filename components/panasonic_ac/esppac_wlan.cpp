@@ -438,7 +438,9 @@ void PanasonicACWLAN::handle_packet() {
     }
 
     update_target_temperature((int8_t) this->rx_buffer_[22]);
-    update_current_temperature((int8_t) this->rx_buffer_[62]);
+    if (!this->has_valid_external_temperature_sensor()) {
+      update_current_temperature((int8_t) this->rx_buffer_[62]);
+    }
     update_outside_temperature((int8_t) this->rx_buffer_[66]);  // Set current (outside) temperature
 
     StringRef horizontalSwing(determine_swing_horizontal(this->rx_buffer_[34]));

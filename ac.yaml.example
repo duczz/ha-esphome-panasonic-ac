@@ -82,6 +82,10 @@ climate:
     # Adapt according to your measurements
     # current_temperature_offset: 0
     # outside_temperature_offset: 0
+    # current_temperature_offset_number:
+    #   name: "Inside Temperature Offset"
+    # outside_temperature_offset_number:
+    #   name: "Outside Temperature Offset"
 
     # Use an external sensor for current temperature (CZ-TACG1 only)
     # current_temperature_sensor: temperature_sensor_id

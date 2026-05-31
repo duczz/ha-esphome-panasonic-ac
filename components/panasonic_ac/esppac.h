@@ -5,6 +5,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/components/number/number.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 
@@ -45,6 +46,9 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_inside_temperature_sensor(sensor::Sensor *inside_temperature_sensor);
   void set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor);
 
+  void set_current_temperature_offset_number(number::Number *current_temperature_offset_number);
+  void set_outside_temperature_offset_number(number::Number *outside_temperature_offset_number);
+
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
 
@@ -63,6 +67,8 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   sensor::Sensor *current_power_consumption_sensor_ = nullptr;  // Sensor to store current power consumption from queries
   sensor::Sensor *inside_temperature_sensor_ = nullptr;
   binary_sensor::BinarySensor *defrost_sensor_ = nullptr;
+  number::Number *current_temperature_offset_number_ = nullptr;
+  number::Number *outside_temperature_offset_number_ = nullptr;
 
   size_t vertical_swing_state_ = ~0UL;
   size_t horizontal_swing_state_ = ~0UL;
@@ -98,6 +104,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_mild_dry(bool mild_dry);
   void update_current_power_consumption(int16_t power);
   void update_defrost(bool defrost);
+  bool has_valid_external_temperature_sensor() const;
 
   virtual void on_horizontal_swing_change(const StringRef &swing) = 0;
   virtual void on_vertical_swing_change(const StringRef &swing) = 0;

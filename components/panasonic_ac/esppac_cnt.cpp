@@ -334,7 +334,7 @@ void PanasonicACCNT::set_data(bool set) {
     if (this->rx_buffer_.size() < 23) {
       ESP_LOGW(TAG, "Poll response too short for extended data");
     } else {
-      if (this->current_temperature_sensor_ == nullptr) {
+      if (!this->has_valid_external_temperature_sensor()) {
         if (this->rx_buffer_[18] != 0x80)
           this->update_current_temperature((int8_t) this->rx_buffer_[18]);
         else if (this->rx_buffer_[21] != 0x80)

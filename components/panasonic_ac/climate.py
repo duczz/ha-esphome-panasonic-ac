@@ -7,9 +7,9 @@ from esphome.const import (
 )
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import uart, climate, sensor, select, switch, binary_sensor
+from esphome.components import uart, climate, sensor, select, switch, binary_sensor, number
 
-AUTO_LOAD = ["switch", "sensor", "select", "binary_sensor"]
+AUTO_LOAD = ["switch", "sensor", "select", "binary_sensor", "number"]
 DEPENDENCIES = ["uart"]
 
 panasonic_ac_ns = cg.esphome_ns.namespace("panasonic_ac")
@@ -27,14 +27,19 @@ PanasonicACSwitch = panasonic_ac_ns.class_(
 PanasonicACSelect = panasonic_ac_ns.class_(
     "PanasonicACSelect", select.Select, cg.Component
 )
+PanasonicACNumber = panasonic_ac_ns.class_(
+    "PanasonicACNumber", number.Number, cg.Component
+)
 
 
 CONF_HORIZONTAL_SWING_SELECT = "horizontal_swing_select"
 CONF_VERTICAL_SWING_SELECT = "vertical_swing_select"
 CONF_OUTSIDE_TEMPERATURE = "outside_temperature"
 CONF_OUTSIDE_TEMPERATURE_OFFSET = "outside_temperature_offset"
+CONF_OUTSIDE_TEMPERATURE_OFFSET_NUMBER = "outside_temperature_offset_number"
 CONF_CURRENT_TEMPERATURE_SENSOR = "current_temperature_sensor"
 CONF_CURRENT_TEMPERATURE_OFFSET = "current_temperature_offset"
+CONF_CURRENT_TEMPERATURE_OFFSET_NUMBER = "current_temperature_offset_number"
 CONF_NANOEX_SWITCH = "nanoex_switch"
 CONF_ECO_SWITCH = "eco_switch"
 CONF_ECONAVI_SWITCH = "econavi_switch"
@@ -52,6 +57,8 @@ VERTICAL_SWING_OPTIONS = ["swing", "auto", "up", "up_center", "center", "down_ce
 SWITCH_SCHEMA = switch.switch_schema(PanasonicACSwitch).extend(cv.COMPONENT_SCHEMA)
 
 SELECT_SCHEMA = select.select_schema(PanasonicACSelect)
+
+NUMBER_SCHEMA = number.number_schema(PanasonicACNumber)
 
 PANASONIC_COMMON_SCHEMA = {
     cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
@@ -72,6 +79,8 @@ PANASONIC_COMMON_SCHEMA = {
     cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_OUTSIDE_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
     cv.Optional(CONF_CURRENT_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
+    cv.Optional(CONF_CURRENT_TEMPERATURE_OFFSET_NUMBER): NUMBER_SCHEMA,
+    cv.Optional(CONF_OUTSIDE_TEMPERATURE_OFFSET_NUMBER): NUMBER_SCHEMA,
 }
 
 PANASONIC_CNT_SCHEMA = {
@@ -144,3 +153,15 @@ async def to_code(config):
     if CONF_CURRENT_POWER_CONSUMPTION in config:
         sens = await sensor.new_sensor(config[CONF_CURRENT_POWER_CONSUMPTION])
         cg.add(var.set_current_power_consumption_sensor(sens))
+
+    if CONF_CURRENT_TEMPERATURE_OFFSET_NUMBER in config:
+        conf = config[CONF_CURRENT_TEMPERATURE_OFFSET_NUMBER]
+        num = await number.new_number(conf, min_value=-15, max_value=15, step=1)
+        await cg.register_component(num, conf)
+        cg.add(var.set_current_temperature_offset_number(num))
+
+    if CONF_OUTSIDE_TEMPERATURE_OFFSET_NUMBER in config:
+        conf = config[CONF_OUTSIDE_TEMPERATURE_OFFSET_NUMBER]
+        num = await number.new_number(conf, min_value=-15, max_value=15, step=1)
+        await cg.register_component(num, conf)
+        cg.add(var.set_outside_temperature_offset_number(num))

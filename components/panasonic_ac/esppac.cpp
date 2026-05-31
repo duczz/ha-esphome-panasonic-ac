@@ -1,4 +1,5 @@
 #include "esppac.h"
+#include <cmath>
 
 #include "esphome/core/log.h"
 
@@ -204,12 +205,17 @@ void PanasonicAC::set_outside_temperature_sensor(sensor::Sensor *outside_tempera
   this->outside_temperature_sensor_ = outside_temperature_sensor;
 }
 
-void PanasonicAC::set_outside_temperature_offset(int8_t outside_temperature_offset) {
+void PanasonicAC::set_outside_temperature_offset(int8_t outside_temperature_offset)
+{
   ESP_LOGV(TAG, "Outside temperature offset %d", outside_temperature_offset);
   this->outside_temperature_offset_ = outside_temperature_offset;
 
+  if (this->outside_temperature_offset_number_ != nullptr && this->outside_temperature_offset_number_->state != outside_temperature_offset) {
+    this->outside_temperature_offset_number_->publish_state(outside_temperature_offset);
+  }
+
   if (this->outside_temperature_sensor_) {
-    ESP_LOGV(TAG, "Corrected outside temperature: %d", this->outside_temperature_sensor_->state + outside_temperature_offset);
+    ESP_LOGV(TAG, "Corrected outside temperature: %d", (int8_t)this->outside_temperature_sensor_->state + outside_temperature_offset);
   }
 }
 
@@ -218,9 +224,29 @@ void PanasonicAC::set_current_temperature_offset(int8_t current_temperature_offs
   ESP_LOGV(TAG, "Current temperature offset %d", current_temperature_offset);
   this->current_temperature_offset_ = current_temperature_offset;
 
+  if (this->current_temperature_offset_number_ != nullptr && this->current_temperature_offset_number_->state != current_temperature_offset) {
+    this->current_temperature_offset_number_->publish_state(current_temperature_offset);
+  }
+
   if (this->current_temperature_sensor_) {
     ESP_LOGV(TAG, "Corrected current temperature: %d", this->current_temperature_sensor_->state + current_temperature_offset);
   }
+}
+
+void PanasonicAC::set_current_temperature_offset_number(number::Number *current_temperature_offset_number) {
+  this->current_temperature_offset_number_ = current_temperature_offset_number;
+  this->current_temperature_offset_number_->publish_state(this->current_temperature_offset_);
+  this->current_temperature_offset_number_->add_on_state_callback([this](float state) {
+    this->set_current_temperature_offset((int8_t)state);
+  });
+}
+
+void PanasonicAC::set_outside_temperature_offset_number(number::Number *outside_temperature_offset_number) {
+  this->outside_temperature_offset_number_ = outside_temperature_offset_number;
+  this->outside_temperature_offset_number_->publish_state(this->outside_temperature_offset_);
+  this->outside_temperature_offset_number_->add_on_state_callback([this](float state) {
+    this->set_outside_temperature_offset((int8_t)state);
+  });
 }
 
 void PanasonicAC::set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor)
@@ -228,8 +254,10 @@ void PanasonicAC::set_current_temperature_sensor(sensor::Sensor *current_tempera
   this->current_temperature_sensor_ = current_temperature_sensor;
   this->current_temperature_sensor_->add_on_state_callback([this](float state)
                                                            {
-                                                             this->current_temperature = state + this->current_temperature_offset_;
-                                                             this->publish_state();
+                                                             if (!std::isnan(state)) {
+                                                               this->current_temperature = state + this->current_temperature_offset_;
+                                                               this->publish_state();
+                                                             }
                                                            });
 }
 
@@ -297,6 +325,13 @@ void PanasonicAC::set_inside_temperature_sensor(sensor::Sensor *inside_temperatu
 
 void PanasonicAC::set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor) {
   this->defrost_sensor_ = defrost_sensor;
+}
+
+bool PanasonicAC::has_valid_external_temperature_sensor() const {
+  if (this->current_temperature_sensor_ == nullptr) return false;
+  if (!this->current_temperature_sensor_->has_state()) return false;
+  if (std::isnan(this->current_temperature_sensor_->state)) return false;
+  return true;
 }
 
 /*
