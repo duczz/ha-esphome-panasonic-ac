@@ -119,7 +119,7 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
 
     const StringRef fanMode = call.get_custom_fan_mode();
 
-    if (fanMode == "Automatic") {
+    if (fanMode == "Auto") {
       set_value(0xB2, 0x41);
       set_value(0xA0, 0x41);
     } else if (fanMode == "1") {
@@ -331,7 +331,7 @@ static const char *determine_fan_speed(uint8_t speed) {
     case 0x36:  // 5
       return "5";
     case 0x41:  // Auto
-      return "Automatic";
+      return "Auto";
     default:
       ESP_LOGW(TAG, "Received unknown fan speed");
       return "Unknown";
