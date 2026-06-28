@@ -36,7 +36,7 @@ static climate::ClimateMode determine_mode(uint8_t mode) {
 static const char *determine_fan_speed(uint8_t speed) {
   switch (speed) {
     case 0xA0:  // Auto
-      return "Auto";
+      return "Automatic";
     case 0x30:  // 1
       return "1";
     case 0x40:  // 2
@@ -256,7 +256,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
 
     const auto fanMode = call.get_custom_fan_mode();
 
-    if (fanMode == "Auto")
+    if (fanMode == "Automatic")
       this->cmd[3] = 0xA0;
     else if (fanMode == "1")
       this->cmd[3] = 0x30;

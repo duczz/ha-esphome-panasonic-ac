@@ -30,7 +30,7 @@ climate::ClimateTraits PanasonicAC::traits() {
 }
 
 void PanasonicAC::setup() {
-  this->set_supported_custom_fan_modes({"Auto", "1", "2", "3", "4", "5"});
+  this->set_supported_custom_fan_modes({"Automatic", "1", "2", "3", "4", "5"});
   this->set_supported_custom_presets({"Normal", "Powerful", "Quiet", "Auto Comfort"});
 
   // Initialize times

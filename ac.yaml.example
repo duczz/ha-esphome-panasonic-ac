@@ -99,7 +99,7 @@ climate:
         - lambda: |-
             auto fan_mode = id(${climate_id}).get_custom_fan_mode();
             if (!fan_mode.empty()) {
-              if (fan_mode == "Auto") id(fan_mode_select).publish_state("Auto");
+              if (fan_mode == "Automatic") id(fan_mode_select).publish_state("Auto");
               else if (fan_mode == "1") id(fan_mode_select).publish_state("1 - Diffuse");
               else if (fan_mode == "2") id(fan_mode_select).publish_state("2 - Low");
               else if (fan_mode == "3") id(fan_mode_select).publish_state("3 - Medium");
@@ -142,7 +142,7 @@ select:
     set_action:
       - lambda: |-
           auto call = id(${climate_id}).make_call();
-          if (x == "Auto")             call.set_fan_mode("Auto");
+          if (x == "Auto")             call.set_fan_mode("Automatic");
           else if (x == "1 - Diffuse") call.set_fan_mode("1");
           else if (x == "2 - Low")     call.set_fan_mode("2");
           else if (x == "3 - Medium")  call.set_fan_mode("3");
