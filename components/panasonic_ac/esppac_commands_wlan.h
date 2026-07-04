@@ -1,3 +1,5 @@
+#pragma once
+
 namespace esphome {
 namespace panasonic_ac {
 

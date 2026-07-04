@@ -7,7 +7,7 @@ namespace esphome {
 namespace panasonic_ac {
 
 class PanasonicACNumber : public number::Number, public Component {
- public:
+ protected:
   void control(float value) override {
     this->publish_state(value);
   }

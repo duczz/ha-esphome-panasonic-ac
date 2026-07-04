@@ -168,7 +168,7 @@ static bool determine_mild_dry(uint8_t value) {
   }
 }
 
-uint16_t determine_power_consumption(uint8_t byte_28, uint8_t byte_29, uint8_t offset) {
+static uint16_t determine_power_consumption(uint8_t byte_28, uint8_t byte_29, uint8_t offset) {
   return (uint16_t) (byte_28 + (byte_29 * 256)) - offset;
 }
 
@@ -328,7 +328,7 @@ void PanasonicACCNT::set_data(bool set) {
   bool econavi = determine_econavi(this->data[5]);
   bool mildDry = determine_mild_dry(this->data[2]);
 
-  this->update_target_temperature((int8_t) this->data[1]);
+  this->update_target_temperature(this->data[1]);
 
   if (set) {
     if (this->rx_buffer_.size() < 23) {
@@ -355,7 +355,7 @@ void PanasonicACCNT::set_data(bool set) {
 
     if (this->current_power_consumption_sensor_ != nullptr && this->rx_buffer_.size() >= 31) {
       uint16_t power_consumption = determine_power_consumption(
-          (int8_t) this->rx_buffer_[28], (int8_t) this->rx_buffer_[29], (int8_t) this->rx_buffer_[30]);
+          this->rx_buffer_[28], this->rx_buffer_[29], this->rx_buffer_[30]);
       this->update_current_power_consumption(power_consumption);
     }
 

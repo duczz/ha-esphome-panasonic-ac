@@ -229,7 +229,7 @@ void PanasonicAC::set_current_temperature_offset(int8_t current_temperature_offs
   }
 
   if (this->current_temperature_sensor_) {
-    ESP_LOGV(TAG, "Corrected current temperature: %d", this->current_temperature_sensor_->state + current_temperature_offset);
+    ESP_LOGV(TAG, "Corrected current temperature: %d", (int8_t)this->current_temperature_sensor_->state + current_temperature_offset);
   }
 }
 
