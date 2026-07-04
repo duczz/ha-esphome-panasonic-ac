@@ -93,6 +93,11 @@ climate:
     # Use an external sensor for current temperature (CZ-TACG1 only)
     # current_temperature_sensor: temperature_sensor_id
 
+    # Show the real compressor state as the climate action (Cooling/Heating/Idle)
+    # instead of the temperature guess (CZ-TACG1 only). Off by default; falls back
+    # automatically if your AC model reports an unexpected value.
+    # compressor_action: true
+
     # Sync template selects below when AC state changes
     on_state:
       then:

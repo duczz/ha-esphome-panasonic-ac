@@ -51,6 +51,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
 
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
+  void set_compressor_action(bool compressor_action);
 
   void setup() override;
   void loop() override;
@@ -79,6 +80,11 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   bool eco_state_ = false;       // Stores the state of eco to prevent duplicate packets
   bool econavi_state_ = false;       // Stores the state of econavi to prevent duplicate packets
   bool mild_dry_state_ = false;  // Stores the state of mild dry to prevent duplicate packets
+
+  bool compressor_action_ = false;      // opt-in: derive climate action from the CNT compressor state (byte 12)
+  uint8_t operation_state_ = 0x00;      // CNT byte 12 raw: high nibble = mode, bit 0x04 = compressor running
+  bool operation_state_valid_ = false;  // true once a poll response has provided byte 12
+  bool defrost_active_ = false;         // true while the AC is defrosting (used to override the action)
 
   bool waiting_for_response_ = false;  // Set to true if we are waiting for a response
 

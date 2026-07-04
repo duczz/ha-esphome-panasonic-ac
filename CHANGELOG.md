@@ -2,18 +2,23 @@
 
 ## 2.6.2 (2026-07-04)
 
-Maintenance release — internal code cleanup only. **No functional or runtime changes**; existing installations do not need to reflash.
+### Added
+
+- **Compressor-based climate action** (CNT, opt-in): New `compressor_action` option. When enabled, the climate entity's action (Cooling / Heating / Idle) is derived from the AC's actual compressor state instead of the temperature heuristic — so Home Assistant shows "Idle" when the room is satisfied and the compressor is off, and "Cooling"/"Heating" only when it is really running.
+  - Reverse-engineered from the CN-CNT poll response: byte 12 encodes the mode in its high nibble (`3`=cool, `4`=heat, `2`=dry, `F`=auto) and the compressor state in bit `0x04`. Verified on a **Panasonic CS-E12QKEW** (CN-CNT via CZ-TACG1) by correlating the byte against power draw across cool/heat/idle. Other models may differ — the self-protecting fallback covers that.
+  - **Default off** — existing installations and other AC models are completely unaffected.
+  - **Self-protecting**: if byte 12's high nibble does not match the current mode (an unverified AC model), the integration automatically falls back to the temperature heuristic.
+  - During a defrost cycle the action is reported as Idle (the compressor runs but is not conditioning the room).
+  - Enable with `compressor_action: true` on a `type: cnt` climate. Works at any logger level — the byte is read from the packet, not from the log.
 
 ### Fixed
 
 - **Incorrect `%d` format specifier used with a `float`** in a verbose debug log (`set_current_temperature_offset`) — undefined behavior that could print garbage in the log output. Logging only; no effect on AC control.
 
-### Changed (internal)
+### Changed
 
-- Added `#pragma once` include guards to the CNT/WLAN headers and command headers (only `esppac.h` had one before).
-- Gave the `determine_power_consumption` helper internal linkage (`static`), consistent with the other CNT helpers.
-- Removed no-op `(int8_t)` casts applied to values that are already passed as `uint8_t`.
-- Made `PanasonicACNumber::control` `protected`, matching the `select`/`switch` wrappers.
+- The live temperature offset number entities (`current_temperature_offset_number` / `outside_temperature_offset_number`) now default to `°C` as their unit of measurement.
+- **Internal cleanup:** added `#pragma once` include guards to the CNT/WLAN and command headers, gave `determine_power_consumption` internal linkage (`static`), removed no-op `(int8_t)` casts, and made `PanasonicACNumber::control` `protected` for consistency with the select/switch wrappers.
 
 ## 2.6.1 (2026-05-31)
 

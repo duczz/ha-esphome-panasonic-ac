@@ -29,6 +29,7 @@ This is a maintained fork of [DomiStyle/esphome-panasonic-ac](https://github.com
 - 🔧 **Temperature offset for WLAN** — `current_temperature_offset` now works for both CNT and WLAN (was CNT-only)
 - 🎚️ **Live Temperature Offsets** — dynamically adjust `current_temperature_offset` and `outside_temperature_offset` from Home Assistant via new number entities without recompiling.
 - 🛡️ **Temperature Sensor Fallback** — if the external `current_temperature_sensor` becomes unavailable (NaN), the integration automatically falls back to the AC's internal temperature sensor.
+- 🧊 **Compressor-based climate action** (CNT, opt-in) — the climate action (Cooling / Heating / Idle) reflects the AC's real compressor state instead of a temperature guess, so it shows "Idle" when the room is satisfied. Off by default, self-protecting fallback. Enable with `compressor_action: true`. Verified on a Panasonic CS-E12QKEW; other models fall back automatically if their reading differs
 
 ### Bug fixes
 - 🐛 **CNT climate action always "Off"** — `determine_action()` was never called in the CNT poll handler, so Home Assistant always showed "Off (Cooling)" instead of the actual action (Cooling, Heating, Idle)
@@ -185,6 +186,7 @@ If your build completes in under 15 seconds, the cache was NOT cleared.
 | `current_temperature_offset_number` | Number | CNT + WLAN | Exposes a slider to Home Assistant to dynamically change the inside temperature offset |
 | `outside_temperature_offset_number` | Number | CNT + WLAN | Exposes a slider to Home Assistant to dynamically change the outside temperature offset |
 | `current_temperature_sensor` | Sensor ID | CNT only | Use an external sensor for current temperature instead of the AC's internal sensor |
+| `compressor_action` | bool | CNT only | Derive the climate action (Cooling/Heating/Idle) from the AC's real compressor state instead of the temperature heuristic. Default `false`. Falls back automatically if the AC model reports an unexpected value |
 
 > **Eco vs. Econavi:** Eco is a simple power reduction mode. Econavi is Panasonic's smart sensor feature that detects room activity (human presence, sunlight) and auto-adjusts power accordingly. They are independent features.
 
@@ -217,6 +219,7 @@ climate:
       name: "Power Consumption"
     defrost_sensor:
       name: "Defrost"
+    compressor_action: true
     current_temperature_offset: 0
     outside_temperature_offset: 0
     current_temperature_offset_number:

@@ -331,6 +331,11 @@ void PanasonicACCNT::set_data(bool set) {
   this->update_target_temperature(this->data[1]);
 
   if (set) {
+    if (this->rx_buffer_.size() >= 13) {
+      this->operation_state_ = this->rx_buffer_[12];  // Byte 12: compressor/operation state (see determine_action)
+      this->operation_state_valid_ = true;
+    }
+
     if (this->rx_buffer_.size() < 23) {
       ESP_LOGW(TAG, "Poll response too short for extended data");
     } else {
@@ -359,9 +364,9 @@ void PanasonicACCNT::set_data(bool set) {
       this->update_current_power_consumption(power_consumption);
     }
 
-    if (this->defrost_sensor_ != nullptr && this->rx_buffer_.size() >= 15) {
-      bool defrost = (this->rx_buffer_[14] == 0x02);
-      update_defrost(defrost);
+    if (this->rx_buffer_.size() >= 15) {
+      this->defrost_active_ = (this->rx_buffer_[14] == 0x02);
+      update_defrost(this->defrost_active_);  // update_defrost is a no-op if no defrost sensor is configured
     }
   }
 

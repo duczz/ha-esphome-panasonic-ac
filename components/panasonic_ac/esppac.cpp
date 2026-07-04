@@ -166,7 +166,34 @@ climate::ClimateAction PanasonicAC::determine_action() {
     return climate::CLIMATE_ACTION_FAN;
   } else if (this->mode == climate::CLIMATE_MODE_DRY) {
     return climate::CLIMATE_ACTION_DRYING;
-  } else if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
+  }
+
+  // Opt-in (CNT): derive the action from the AC's own compressor state (byte 12) instead of the
+  // temperature heuristic. The high nibble of byte 12 encodes the mode; if it does not match the
+  // current mode the signal is treated as unreliable (e.g. an untested AC model) and we fall
+  // through to the temperature heuristic below.
+  if (this->compressor_action_ && this->operation_state_valid_) {
+    uint8_t expected_nibble = 0x00;
+    bool applicable = true;
+    switch (this->mode) {
+      case climate::CLIMATE_MODE_COOL: expected_nibble = 0x30; break;
+      case climate::CLIMATE_MODE_HEAT: expected_nibble = 0x40; break;
+      case climate::CLIMATE_MODE_HEAT_COOL: expected_nibble = 0xF0; break;
+      default: applicable = false; break;
+    }
+    if (applicable && (this->operation_state_ & 0xF0) == expected_nibble) {
+      if (this->defrost_active_ || (this->operation_state_ & 0x04) == 0)
+        return climate::CLIMATE_ACTION_IDLE;  // compressor idle, or defrosting (not conditioning the room)
+      if (this->mode == climate::CLIMATE_MODE_HEAT)
+        return climate::CLIMATE_ACTION_HEATING;
+      if (this->mode == climate::CLIMATE_MODE_COOL)
+        return climate::CLIMATE_ACTION_COOLING;
+      return this->current_temperature < this->target_temperature ? climate::CLIMATE_ACTION_HEATING
+                                                                   : climate::CLIMATE_ACTION_COOLING;
+    }
+  }
+
+  if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
     if (this->current_temperature > this->target_temperature + TEMPERATURE_TOLERANCE)
       return climate::CLIMATE_ACTION_COOLING;
     if (this->current_temperature < this->target_temperature - TEMPERATURE_TOLERANCE)
@@ -325,6 +352,10 @@ void PanasonicAC::set_inside_temperature_sensor(sensor::Sensor *inside_temperatu
 
 void PanasonicAC::set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor) {
   this->defrost_sensor_ = defrost_sensor;
+}
+
+void PanasonicAC::set_compressor_action(bool compressor_action) {
+  this->compressor_action_ = compressor_action;
 }
 
 bool PanasonicAC::has_valid_external_temperature_sensor() const {

@@ -47,6 +47,7 @@ CONF_MILD_DRY_SWITCH = "mild_dry_switch"
 CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
 CONF_INSIDE_TEMPERATURE = "inside_temperature"
 CONF_DEFROST_SENSOR = "defrost_sensor"
+CONF_COMPRESSOR_ACTION = "compressor_action"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
 
@@ -58,7 +59,7 @@ SWITCH_SCHEMA = switch.switch_schema(PanasonicACSwitch).extend(cv.COMPONENT_SCHE
 
 SELECT_SCHEMA = select.select_schema(PanasonicACSelect)
 
-NUMBER_SCHEMA = number.number_schema(PanasonicACNumber)
+NUMBER_SCHEMA = number.number_schema(PanasonicACNumber, unit_of_measurement=UNIT_CELSIUS)
 
 PANASONIC_COMMON_SCHEMA = {
     cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
@@ -84,6 +85,7 @@ PANASONIC_COMMON_SCHEMA = {
 }
 
 PANASONIC_CNT_SCHEMA = {
+    cv.Optional(CONF_COMPRESSOR_ACTION, default=False): cv.boolean,
     cv.Optional(CONF_ECO_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_ECONAVI_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_MILD_DRY_SWITCH): SWITCH_SCHEMA,
@@ -149,6 +151,9 @@ async def to_code(config):
 
     if CONF_CURRENT_TEMPERATURE_OFFSET in config:
         cg.add(var.set_current_temperature_offset(config[CONF_CURRENT_TEMPERATURE_OFFSET]))
+
+    if CONF_COMPRESSOR_ACTION in config:
+        cg.add(var.set_compressor_action(config[CONF_COMPRESSOR_ACTION]))
 
     if CONF_CURRENT_POWER_CONSUMPTION in config:
         sens = await sensor.new_sensor(config[CONF_CURRENT_POWER_CONSUMPTION])
