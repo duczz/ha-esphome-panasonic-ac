@@ -13,7 +13,7 @@ namespace esphome {
 
 namespace panasonic_ac {
 
-static const char *const VERSION = "2.6.1";
+static const char *const VERSION = "2.6.2";
 
 static const size_t MAX_RX_BUFFER_SIZE = 256;  // Maximum receive buffer size to prevent OOM from UART noise
 static const uint8_t READ_TIMEOUT = 20;        // The maximum time to wait before considering a packet complete

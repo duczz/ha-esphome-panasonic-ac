@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.6.2 (2026-07-04)
+
+Maintenance release — internal code cleanup only. **No functional or runtime changes**; existing installations do not need to reflash.
+
+### Fixed
+
+- **Incorrect `%d` format specifier used with a `float`** in a verbose debug log (`set_current_temperature_offset`) — undefined behavior that could print garbage in the log output. Logging only; no effect on AC control.
+
+### Changed (internal)
+
+- Added `#pragma once` include guards to the CNT/WLAN headers and command headers (only `esppac.h` had one before).
+- Gave the `determine_power_consumption` helper internal linkage (`static`), consistent with the other CNT helpers.
+- Removed no-op `(int8_t)` casts applied to values that are already passed as `uint8_t`.
+- Made `PanasonicACNumber::control` `protected`, matching the `select`/`switch` wrappers.
+
 ## 2.6.1 (2026-05-31)
 
 ### Added
