@@ -10,6 +10,11 @@ builds/
 *.py[cod]
 .DS_Store
 
-# Local-only AI assistant notes (gitignored — kein privates Wissen leaken)
+# Local-only - PersonalOS
 CLAUDE.md
+CLAUDE.local.md
 .claude/
+
+# Environment / secrets
+.env
+.env.*
