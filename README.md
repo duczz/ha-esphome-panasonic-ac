@@ -15,36 +15,11 @@ An open source alternative for the Panasonic wi-fi adapter that works locally wi
 
 ---
 
-## 🛠️ What's different from the original
+## 🛠️ About this fork
 
-This is a maintained fork of [DomiStyle/esphome-panasonic-ac](https://github.com/DomiStyle/esphome-panasonic-ac) with ESPHome 2026.x compatibility, bug fixes and new features.
+This is a maintained, modernised fork of [DomiStyle/esphome-panasonic-ac](https://github.com/DomiStyle/esphome-panasonic-ac), rebuilt for the latest ESPHome (2026.x) and Home Assistant versions. It adds a range of new features, bug fixes and stability improvements — from the Auto Comfort preset and inside temperature sensor to compressor-based climate action and live temperature offsets.
 
-### Compatibility
-- ⚡ **ESPHome 2026.4+ support** — custom fan modes and presets are registered via `setup()` (new API). The deprecated `traits()` registration has been removed after confirming `setup()`-only works in ESPHome 2026.5.1. No more deprecation warnings during build.
-
-### New features
-- 🌬️ **Auto Comfort preset** (CNT) — adds the Auto Comfort preset mode alongside Normal, Powerful and Quiet. Reverse-engineered from UART logs
-- 🌡️ **Inside temperature sensor** — exposes the AC's internal temperature reading as a standalone entity for automations, dashboards and history graphs
-- ❄️ **Defrost sensor** — binary sensor that reports when the AC unit is in defrost mode (CNT + WLAN)
-- 🔧 **Temperature offset for WLAN** — `current_temperature_offset` now works for both CNT and WLAN (was CNT-only)
-- 🎚️ **Live Temperature Offsets** — dynamically adjust `current_temperature_offset` and `outside_temperature_offset` from Home Assistant via new number entities without recompiling.
-- 🛡️ **Temperature Sensor Fallback** — if the external `current_temperature_sensor` becomes unavailable (NaN), the integration automatically falls back to the AC's internal temperature sensor.
-- 🧊 **Compressor-based climate action** (CNT, opt-in) — the climate action (Cooling / Heating / Idle) reflects the AC's real compressor state instead of a temperature guess, so it shows "Idle" when the room is satisfied. Off by default, self-protecting fallback. Enable with `compressor_action: true`. Verified on a Panasonic CS-E12QKEW; other models fall back automatically if their reading differs
-
-### Bug fixes
-- 🐛 **CNT climate action always "Off"** — `determine_action()` was never called in the CNT poll handler, so Home Assistant always showed "Off (Cooling)" instead of the actual action (Cooling, Heating, Idle)
-- 🐛 **Preset reset mask missing Auto Comfort** (CNT) — changing fan mode used mask `0xF0` which didn't clear the Auto Comfort bit; fixed to `0xD0`
-- 🐛 **Econavi toggle destroying preset + nanoex state** (CNT) — `on_econavi_change` overwrote the entire shared byte instead of toggling only its bit
-- 🐛 **Nanoex toggle destroying econavi state** (CNT) — `on_nanoex_change` cleared the econavi bit when toggling
-- 🐛 **`determine_action()` broken in HEAT_COOL mode** — never returned IDLE and showed COOLING even below target temperature. Reworked with proper deadband logic
-- 🛡️ **WLAN report parser out-of-bounds** — added bounds check in key-value pair loop to prevent crash from malformed packets
-- 🛡️ **CNT poll response out-of-bounds** — `set_data()` accessed `rx_buffer_` indices up to 30 without verifying packet size
-- 🛡️ **Unbounded receive buffer growth** — `rx_buffer_` had no size limit, UART noise could cause OOM on the ESP32
-- 🛡️ **Uninitialized WLAN command pointer** — `last_command_` risked a crash if `handle_resend()` fired before any command was sent
-- 🔧 **Uninitialized swing state / timer members** — could cause first swing update to be skipped or unexpected timing behavior
-- 🔧 **`log_packet` unnecessary vector copy** — changed to pass-by-reference
-
-For the full version history see [CHANGELOG.md](CHANGELOG.md).
+For a detailed list of all new features, bug fixes, and improvements, please check the [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -80,7 +55,7 @@ For the full version history see [CHANGELOG.md](CHANGELOG.md).
 
 ## Table of Contents
 
-- [What's different](#️-whats-different-from-the-original)
+- [About this fork](#️-about-this-fork)
 - [Migrating from DomiStyle](#-migrating-from-domistyleesphome-panasonic-ac)
 - [Features](#-features)
 - [Supported hardware](#-supported-hardware)
