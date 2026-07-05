@@ -15,6 +15,22 @@ An open source alternative for the Panasonic wi-fi adapter that works locally wi
 
 ---
 
+## Table of Contents
+
+- [About this fork](#️-about-this-fork)
+- [Migrating from DomiStyle](#-migrating-from-domistyleesphome-panasonic-ac)
+- [Features](#-features)
+- [Supported hardware](#-supported-hardware)
+- [Requirements](#-requirements)
+- [Software installation](#-software-installation)
+- [Configuration](#️-configuration)
+  - [All options](#all-options)
+  - [Example configuration](#example-configuration)
+  - [Temperature offsets](#temperature-offsets)
+- [Hardware installation](#-hardware-installation)
+
+---
+
 ## 🛠️ About this fork
 
 This is a maintained, modernised fork of [DomiStyle/esphome-panasonic-ac](https://github.com/DomiStyle/esphome-panasonic-ac), rebuilt for the latest ESPHome (2026.x) and Home Assistant versions. It adds a range of new features, bug fixes and stability improvements — from the Auto Comfort preset and inside temperature sensor to compressor-based climate action and live temperature offsets.
@@ -50,22 +66,6 @@ For a detailed list of all new features, bug fixes, and improvements, please che
    **Do NOT compare with `nullptr`** — `StringRef` comparison with `nullptr` causes a crash.
 
 4. **Compile and flash**.
-
----
-
-## Table of Contents
-
-- [About this fork](#️-about-this-fork)
-- [Migrating from DomiStyle](#-migrating-from-domistyleesphome-panasonic-ac)
-- [Features](#-features)
-- [Supported hardware](#-supported-hardware)
-- [Requirements](#-requirements)
-- [Software installation](#-software-installation)
-- [Configuration](#️-configuration)
-  - [All options](#all-options)
-  - [Example configuration](#example-configuration)
-  - [Temperature offsets](#temperature-offsets)
-- [Hardware installation](#-hardware-installation)
 
 ---
 
