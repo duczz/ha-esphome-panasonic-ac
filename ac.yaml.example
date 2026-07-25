@@ -77,6 +77,7 @@ climate:
     # mild_dry_switch:
     #   name: "Mild Dry"
     # current_power_consumption:
+    #   id: ac_power                 # only needed for the total_daily_energy sensor below
     #   name: "Power Consumption"
 
     # You have two options for temperature offsets (use one or both):
@@ -129,6 +130,21 @@ climate:
               else if (preset == "Quiet")    id(preset_select).publish_state("Quiet");
               else if (preset == "Auto Comfort") id(preset_select).publish_state("Auto Comfort");
             }
+
+# Daily energy in kWh, derived from the power sensor above.
+# Requires `id:` on current_power_consumption and the time component at the bottom.
+# sensor:
+#   - platform: total_daily_energy
+#     name: "Total Daily Energy"
+#     power_id: ac_power
+#     unit_of_measurement: kWh
+#     device_class: energy
+#     filters:
+#       - multiply: 0.001            # W -> kW, so the daily total comes out in kWh
+#
+# time:
+#   - platform: homeassistant
+#     id: homeassistant_time
 
 select:
   - platform: template

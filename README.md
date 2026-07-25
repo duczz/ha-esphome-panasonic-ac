@@ -25,7 +25,9 @@ An open source alternative for the Panasonic wi-fi adapter that works locally wi
 - [Software installation](#-software-installation)
 - [Configuration](#️-configuration)
   - [All options](#all-options)
+  - [Entities and supported values](#entities-and-supported-values)
   - [Example configuration](#example-configuration)
+  - [Daily energy consumption (kWh)](#daily-energy-consumption-kwh)
   - [Temperature offsets](#temperature-offsets)
 - [Hardware installation](#-hardware-installation)
 
@@ -160,8 +162,8 @@ If your build completes in under 15 seconds, the cache was NOT cleared.
 | `outside_temperature_offset` | int | CNT + WLAN | Fixed offset for outside temperature (-15 to +15) |
 | `current_temperature_offset_number` | Number | CNT + WLAN | Exposes a slider to Home Assistant to dynamically change the inside temperature offset |
 | `outside_temperature_offset_number` | Number | CNT + WLAN | Exposes a slider to Home Assistant to dynamically change the outside temperature offset |
-| `current_temperature_sensor` | Sensor ID | CNT only | Use an external sensor for current temperature instead of the AC's internal sensor |
-| `compressor_action` | bool | CNT only | Derive the climate action (Cooling/Heating/Idle) from the AC's real compressor state instead of the temperature heuristic. Default `false`. Falls back automatically if the AC model reports an unexpected value |
+| `current_temperature_sensor` | Sensor ID | CNT only | Use an external sensor for current temperature instead of the AC's internal sensor (see [details](#using-an-external-temperature-sensor)) |
+| `compressor_action` | bool | CNT only | Derive the climate action (Cooling/Heating/Idle) from the AC's real compressor state instead of the temperature heuristic. Default `false`. Falls back automatically if the AC model reports an unexpected value. During a defrost cycle the action is reported as `Idle`, since the unit is not conditioning the room |
 
 > **Eco vs. Econavi:** Eco is a simple power reduction mode. Econavi is Panasonic's smart sensor feature that detects room activity (human presence, sunlight) and auto-adjusts power accordingly. They are independent features.
 
@@ -169,7 +171,34 @@ If your build completes in under 15 seconds, the cache was NOT cleared.
 
 > **Enabling unsupported features can lead to undefined behavior. Check your remote or manual first.**
 
-> **`current_power_consumption` is an estimated value by the AC, not a measured value.**
+> **`current_power_consumption` is an estimated value by the AC, not a measured value.** It covers the whole split system (indoor + outdoor unit) — it stays non-zero when only the indoor fan runs.
+
+> **Multi-split systems:** If several indoor units share a single outdoor unit, do not blindly add up the sensors (or any kWh values derived from them) of all indoor units — each adapter may report the whole system's consumption, which would count the same energy several times. This is unverified; no multi-split system was available for testing. Reports welcome in an issue. With separate single-split systems (one outdoor unit each), summing is correct.
+
+### Entities and supported values
+
+These are the exact values the component registers. Use these strings verbatim in automations, scripts and template selects — Home Assistant matches them literally.
+
+| | Supported values |
+|---|---|
+| **Modes** | `off`, `heat_cool`, `cool`, `heat`, `fan_only`, `dry` |
+| **Fan modes** (custom) | `Automatic`, `1`, `2`, `3`, `4`, `5` |
+| **Presets** (custom) | `Normal`, `Powerful`, `Quiet`, `Auto Comfort` |
+| **Swing modes** | `off`, `both`, `vertical`, `horizontal` |
+| **Vertical swing select** | `swing`, `auto`, `up`, `up_center`, `center`, `down_center`, `down` |
+| **Horizontal swing select** | `auto`, `left`, `left_center`, `center`, `right_center`, `right` |
+| **Target temperature** | 16 – 30 °C in steps of 0.5 °C |
+
+Fan modes and presets are *custom* values, so in a lambda they come back as a `StringRef`:
+
+```cpp
+auto fan_mode = id(my_ac).get_custom_fan_mode();
+if (!fan_mode.empty() && fan_mode == "Automatic") { /* ... */ }
+```
+
+The two swing selects are separate entities from the climate `swing_mode`: the selects set a fixed louver position, while `swing_mode` reports `vertical` / `horizontal` / `both` whenever the corresponding select is on `auto`.
+
+> **Update rate:** CZ-TACG1 (`type: cnt`) polls the AC every **5 seconds**, DNSK-P11 (`type: wlan`) every **30 seconds**. State changes made on the IR remote therefore show up noticeably faster on CNT. Commands you send are transmitted immediately on both.
 
 ### Example configuration
 
@@ -203,6 +232,37 @@ climate:
       name: "Outside Temperature Offset"
 ```
 
+### Daily energy consumption (kWh)
+
+The component reports **instantaneous power in watts only**. To get a kWh value for Home Assistant's Energy dashboard, stack ESPHome's standard [`total_daily_energy`](https://esphome.io/components/sensor/total_daily_energy.html) platform on top of the power sensor. Two things are required: give `current_power_consumption` an `id`, and have a `time:` source in your config (the counter resets at local midnight).
+
+```yaml
+climate:
+  - platform: panasonic_ac
+    type: cnt
+    # ... rest of your config
+    current_power_consumption:
+      id: ac_power          # required so total_daily_energy can reference it
+      name: "Power Consumption"
+
+sensor:
+  - platform: total_daily_energy
+    name: "Total Daily Energy"
+    power_id: ac_power
+    unit_of_measurement: kWh
+    device_class: energy
+    filters:
+      - multiply: 0.001     # W -> kW, so the daily total comes out in kWh
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+```
+
+You do not need to set `unit_of_measurement`, `accuracy_decimals`, `device_class` or `state_class` on `current_power_consumption` — the component already declares them (`W`, `0`, `power`, `measurement`).
+
+Since the kWh value is derived from the estimated power reading, it inherits both caveats above: it is an estimate, not a meter reading, and on multi-split systems it must not be summed across indoor units.
+
 ### Temperature offsets
 
 The AC's internal sensors may not reflect the actual room temperature. You can define a fixed offset for both inside and outside temperature. The offset is applied to both reported values and target temperature commands:
@@ -219,6 +279,25 @@ The AC's internal sensors may not reflect the actual room temperature. You can d
 |-----------|---------|--------|
 | Room is warmer than AC reports | Actual 23°, AC reads 20° | `+3` |
 | Room is cooler than AC reports | Actual 20°, AC reads 22° | `-2` |
+
+#### Using an external temperature sensor
+
+With `current_temperature_sensor` (CNT only) the climate entity uses any other Home Assistant / ESPHome sensor as its current temperature instead of the AC's internal one. The component falls back to the AC's internal reading whenever the external sensor is **not usable**, which means any of:
+
+* no external sensor is configured,
+* the sensor has not published a value yet (this is the normal state right after boot),
+* its value is `NaN` (typical for an unavailable sensor).
+
+> **The offset is applied to the external sensor too.** `current_temperature_offset` is added on top of whatever value the external sensor reports, not only to the AC's internal reading. If you already use a calibrated external sensor, leave the offset at `0` — otherwise you shift an already correct value a second time.
+
+#### Implausible readings are discarded
+
+A temperature sensor that never updates is usually being filtered, not stuck. Two independent filters can cause this:
+
+* **Unsupported by the unit** — the AC sends the placeholder `0x80` for a sensor it does not have. The value is skipped and `... temperature is not supported` is logged at `VERBOSE`. Not all models report an outside temperature.
+* **Implausible value** — anything above 100 °C after the offset is discarded with a `Received out of range ...` warning, so the entity keeps its last good value instead of publishing nonsense.
+
+If a temperature looks frozen, set `logger: level: VERBOSE` and check which of the two messages appears.
 
 ---
 
