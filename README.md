@@ -80,6 +80,8 @@ For a detailed list of all new features, bug fixes, and improvements, please che
 * Provides a drop-in replacement for the Panasonic DNSK-P11 and the CZ-TACG1 wifi module
 * Inside and outside temperature as standalone sensors
 * Defrost status detection
+* Climate action (Cooling/Heating/Idle) from the AC's real compressor state (CNT, opt-in)
+* Auto Comfort preset (CNT)
 * Power consumption monitoring (estimated by AC)
 * Fallback to internal sensor if external temperature sensor fails
 * Live temperature offset adjustment via Home Assistant sliders
@@ -137,6 +139,8 @@ external_components:
 ESPHome caches external components aggressively. After switching to this fork (or after updates), clear the cache before compiling: click **Clean Build Files** in the ESPHome dashboard (three-dot menu on your device).
 
 If your build completes in under 15 seconds, the cache was NOT cleared.
+
+Alternatively, add `refresh: always` to the `external_components` entry (on the same level as `source:` and `components:`, see `ac.yaml.example`) so ESPHome fetches the latest version on every build. Remove it again after the first successful build.
 
 ---
 

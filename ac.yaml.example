@@ -41,10 +41,10 @@ external_components:
   - source:
       type: git
       url: https://github.com/duczz/ha-esphome-panasonic-ac
-      # Add the line below if ESPHome uses a cached old version of the component
-      # (if your build completes in under 15 seconds, the cache was NOT cleared).
-      # Remove after the first successful build.
-      # refresh: always
+    # Add the line below if ESPHome uses a cached old version of the component
+    # (if your build completes in under 15 seconds, the cache was NOT cleared).
+    # Remove after the first successful build.
+    # refresh: always
     components: [panasonic_ac]
 
 climate:

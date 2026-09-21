@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.6.3] – 2026-09-21
+
+A small maintenance release. **No functional changes** — AC control, protocol handling and all entities behave exactly as in 2.6.2.
+
+### 🔧 Code Quality
+
+- **Clean Builds (No More Compiler Warnings)** — Building the component no longer prints six `-Wempty-body` warnings ("suggest braces around empty body in an 'else' statement") in `esppac_cnt.cpp` and `esppac_wlan.cpp`. `ESP_LOGV` compiles to an empty statement at log level `INFO`, so GCC flagged the unbraced `else` branches. Braces added; behaviour unchanged.
+
+### 📖 Documentation
+
+- **Daily Energy Recipe** — README and `ac.yaml.example` now show how to get a `Total Daily Energy` sensor in kWh from `current_power_consumption` (`total_daily_energy` platform, `multiply: 0.001`, `time: homeassistant`). The power sensor needs an `id:` for this.
+- **Supported Values** — New README section "Entities and supported values" listing what the climate entity and its selects/switches accept.
+- **Sensor Filtering** — Documented how to use an external temperature sensor and that implausible readings from the AC are discarded automatically.
+- **`refresh: always` Hint Fixed in `ac.yaml.example`** — The commented-out `refresh: always` line was indented inside `source:`, where ESPHome does not accept it. It now sits on the same level as `source:` and `components:`, so uncommenting it works. The README cache section points to it as an alternative to "Clean Build Files".
+- **README Feature List** — Now also lists the compressor-based climate action and the Auto Comfort preset.
+- **README & CHANGELOG Layout** — Table of Contents moved to the top, fork section slimmed down and pointing to the CHANGELOG, CHANGELOG restyled to the emoji-section schema.
+
 ## [2.6.2] – 2026-07-04
 
 ### ✨ New Features
