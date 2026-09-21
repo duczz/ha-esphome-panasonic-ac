@@ -137,8 +137,9 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     } else if (fanMode == "5") {
       set_value(0xB2, 0x41);
       set_value(0xA0, 0x36);
-    } else
+    } else {
       ESP_LOGV(TAG, "Unsupported fan mode requested");
+    }
   }
 
   if (call.get_swing_mode().has_value()) {
@@ -185,8 +186,9 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
       set_value(0xB2, 0x43);
       set_value(0x35, 0x42);
       set_value(0x34, 0x42);
-    } else
+    } else {
       ESP_LOGV(TAG, "Unsupported preset requested");
+    }
   }
 
   if (this->set_queue_index_ > 0)  // Only send packet if any changes need to be made
