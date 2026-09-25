@@ -177,7 +177,7 @@ Alternatively, add `refresh: always` to the `external_components` entry (on the 
 
 > **`current_power_consumption` is an estimated value by the AC, not a measured value.** It covers the whole split system (indoor + outdoor unit) — it stays non-zero when only the indoor fan runs.
 
-> **Multi-split systems:** If several indoor units share a single outdoor unit, do not blindly add up the sensors (or any kWh values derived from them) of all indoor units — each adapter may report the whole system's consumption, which would count the same energy several times. This is unverified; no multi-split system was available for testing. Reports welcome in an issue. With separate single-split systems (one outdoor unit each), summing is correct.
+> **Multi-split systems:** If several indoor units share a single outdoor unit, the adapters may all report the same value instead of a per-indoor-unit share (measured on one 1 outdoor + 3 indoor unit setup: with only one indoor unit cooling, all three sensors showed the same power curve). Use the sensor of **one** indoor unit per outdoor unit and do not add them up (or any kWh values derived from them) — that would count the same energy several times. With separate single-split systems (one outdoor unit each), summing is correct.
 
 ### Entities and supported values
 
@@ -265,7 +265,7 @@ time:
 
 You do not need to set `unit_of_measurement`, `accuracy_decimals`, `device_class` or `state_class` on `current_power_consumption` — the component already declares them (`W`, `0`, `power`, `measurement`).
 
-Since the kWh value is derived from the estimated power reading, it inherits both caveats above: it is an estimate, not a meter reading, and on multi-split systems it must not be summed across indoor units.
+Since the kWh value is derived from the estimated power reading, it inherits both caveats above: it is an estimate, not a meter reading, and on multi-split systems the indoor units may all report the same value, so use only one of them per outdoor unit.
 
 ### Temperature offsets
 
