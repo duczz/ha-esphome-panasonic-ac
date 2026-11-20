@@ -370,11 +370,16 @@ bool PanasonicAC::has_valid_external_temperature_sensor() const {
  */
 
 void PanasonicAC::log_packet(const std::vector<uint8_t> &data, bool outgoing) {
-  if (outgoing) {
-    ESP_LOGV(TAG, "TX: %s", format_hex_pretty(data).c_str());
-  } else {
-    ESP_LOGV(TAG, "RX: %s", format_hex_pretty(data).c_str());
-  }
+#if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
+  // Stack buffer instead of format_hex_pretty(): the std::string variant moved to alloc_helpers.h
+  // (no longer included via helpers.h since ESPHome 2026.11). RX packets are capped at MAX_RX_BUFFER_SIZE.
+  char buf[format_hex_pretty_size(MAX_RX_BUFFER_SIZE)];
+  format_hex_pretty_to(buf, sizeof(buf), data.data(), data.size());
+  ESP_LOGV(TAG, "%s: %s", outgoing ? "TX" : "RX", buf);
+#else
+  (void) data;
+  (void) outgoing;
+#endif
 }
 
 }  // namespace panasonic_ac
