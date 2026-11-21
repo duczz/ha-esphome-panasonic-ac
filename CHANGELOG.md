@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.6.4] – 2026-11-21
+
+A small bug-fix release. **No functional changes** — AC control, protocol handling and all entities behave exactly as in 2.6.3.
+
+### 🐛 Bug Fixes
+
+- **Build Fails with `logger: level: VERBOSE` on ESPHome 2026.11 and Newer** ([#4](https://github.com/duczz/ha-esphome-panasonic-ac/issues/4)) — Compiling failed with `'format_hex_pretty' was not declared in this scope` when the log level was `VERBOSE` or higher, for example when a package raised it. **Affected:** ESPHome 2026.11 and newer, and only at `VERBOSE` or higher; at the default level and on older ESPHome versions the build was fine. The `std::string` overload of `format_hex_pretty` lives in `esphome/core/alloc_helpers.h`, which ESPHome 2026.11 no longer includes via `helpers.h`. `log_packet()` now uses the stack-based `format_hex_pretty_to()`, available since ESPHome 2026.4 (the minimum for this fork), so it works on all supported versions.
+
+### 🔧 Changed Log Format
+
+- With `VERBOSE` logging the raw packet lines look slightly different: `TX: AA:BB:CC` instead of `TX: AA.BB.CC (3)` (separator `:`, no length suffix).
+
 ## [2.6.3] – 2026-09-21
 
 A small maintenance release. **No functional changes** — AC control, protocol handling and all entities behave exactly as in 2.6.2.
