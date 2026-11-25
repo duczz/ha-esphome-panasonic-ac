@@ -13,6 +13,8 @@
 
 An open source alternative for the Panasonic wi-fi adapter that works locally without the cloud. Provides a drop-in replacement for the Panasonic DNSK-P11 and CZ-TACG1 wifi modules using an ESP32 via the UART interface.
 
+<p align="center">🚀 <a href="#-software-installation">Installation</a> · ⚙️ <a href="#️-configuration">Configuration</a> · 🧩 <a href="#example-configuration">Examples</a> · 📜 <a href="CHANGELOG.md">Changelog</a></p>
+
 ---
 
 ## Table of Contents
