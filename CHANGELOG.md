@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### 🐛 Bug Fixes
+
+- **CN-CNT: Valid Poll Reply Dropped When Noise Bytes Precede It** — With TX→RX crosstalk in the wiring (e.g. a level shifter echoing our own poll back as distorted bytes), the echo and the real reply ended up in one read buffer. `verify_packet()` then rejected the whole buffer (`Dropping invalid packet (length mismatch)`), so the component never reached the ready state. The receive path now skips leading bytes up to the first complete packet (header, matching length byte, zero checksum). A buffer that already is a complete packet is left untouched, and the skipped byte count is logged at `VERBOSE`. **Affected:** CN-CNT setups with leading noise before the reply; clean setups behave as before. Fixing the wiring is still the better cure. Checked offline against constructed packets, not yet on real hardware.
+
 ## [2.6.4] – 2026-11-21
 
 A small bug-fix release. **No functional changes** — AC control, protocol handling and all entities behave exactly as in 2.6.3.

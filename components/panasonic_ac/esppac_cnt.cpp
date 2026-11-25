@@ -178,6 +178,36 @@ void PanasonicACCNT::setup() {
   ESP_LOGD(TAG, "Using CZ-TACG1 protocol via CN-CNT");
 }
 
+// Checks whether buf[offset..end] is one complete packet (header, length byte, zero checksum)
+static bool is_complete_packet(const std::vector<uint8_t> &buf, size_t offset) {
+  if (buf.size() < offset + 12)
+    return false;
+  if (buf[offset] != CTRL_HEADER && buf[offset] != POLL_HEADER)
+    return false;
+  if (buf[offset + 1] != static_cast<uint8_t>(buf.size() - offset - 3))
+    return false;
+
+  uint8_t checksum = 0;
+  for (size_t i = offset; i < buf.size(); i++) {
+    checksum += buf[i];
+  }
+  return checksum == 0;
+}
+
+// Returns the offset of the first complete packet in the buffer. A buffer that already is a complete packet
+// returns 0, as does a buffer without any complete packet (verify_packet() then drops it as before).
+// This lets us recover when noise bytes (e.g. TX echo from the wiring) precede the real reply in the same read.
+static size_t find_packet_start(const std::vector<uint8_t> &buf) {
+  if (is_complete_packet(buf, 0))
+    return 0;
+
+  for (size_t i = 1; i + 12 <= buf.size(); i++) {
+    if (is_complete_packet(buf, i))
+      return i;
+  }
+  return 0;
+}
+
 void PanasonicACCNT::loop() {
   PanasonicAC::read_data();
 
@@ -185,6 +215,12 @@ void PanasonicACCNT::loop() {
       !this->rx_buffer_.empty())  // Check if our read timed out and we received something
   {
     log_packet(this->rx_buffer_);
+
+    size_t start = find_packet_start(this->rx_buffer_);
+    if (start > 0) {
+      ESP_LOGV(TAG, "Skipping %u noise bytes before packet", (unsigned int) start);
+      this->rx_buffer_.erase(this->rx_buffer_.begin(), this->rx_buffer_.begin() + start);
+    }
 
     if (!verify_packet())  // Verify length, header, counter and checksum
       return;
