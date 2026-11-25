@@ -125,7 +125,8 @@ class Device:
 
     def check_gaps(self):
         frames = sorted([t for t, _ in self.ac.commands] + self.ac.polls)
-        assert all(b - a > 0.24 for a, b in zip(frames, frames[1:])), frames
+        # Receive timestamps jitter by >10 ms, the firmware itself keeps > CMD_INTERVAL (250 ms)
+        assert all(b - a > 0.2 for a, b in zip(frames, frames[1:])), frames
 
 
 async def confirmed_without_resend(d):
@@ -257,6 +258,18 @@ async def gives_up(d):
     assert len(d.ac.commands) == 7
 
 
+async def unsupported_switch_gives_up(d):
+    d.ac.lose = 1000
+    d.switch("Eco", True)
+    await asyncio.sleep(1.5)
+    assert d.states[d.keys["Eco"]].state is True  # Shows the request while in flight
+    await asyncio.sleep(14)
+    assert len(d.ac.commands) == 6
+    assert d.count("giving up") == 1
+    assert d.states[d.keys["Eco"]].state is False
+    assert d.ac.state[8] == 0x00
+
+
 async def external_change(d):
     def remote(_):
         d.ac.state[0] = 0x34  # IR remote: cool
@@ -273,6 +286,26 @@ async def external_change(d):
     d.temperature(24)
     await asyncio.sleep(2)
     assert d.ac.state[:4] == [0x34, 48, 0x80, 0x50]
+
+
+async def ir_sets_earlier_request_during_resend(d):
+    # Fan 4 and temp 24 are both lost, the resend of (fan 4, 24) is lost too. Then the IR remote sets fan 4 at 22,
+    # which equals the first request. After a resend only the state it answered counts as old, so this is an
+    # external change and must not be overridden.
+    def remote(count):
+        if count == 3:
+            d.ac.state[3] = 0x60
+
+    d.ac.lose = 3
+    d.ac.applied = remote
+    d.fan("4")
+    await asyncio.sleep(0.5)
+    d.temperature(24)
+    await asyncio.sleep(6)
+    assert len(d.ac.commands) == 3, [c[1] for c in d.ac.commands]
+    assert d.count("resending (1/5)") == 1
+    assert d.count("changed externally") == 1
+    assert d.ac.state[1] == 0x2C and d.ac.state[3] == 0x60
 
 
 async def second_change_while_pending(d):
@@ -396,7 +429,9 @@ SUITES = [
             fan_after_lost_preset,
             eco_and_mild_dry_lost,
             gives_up,
+            unsupported_switch_gives_up,
             external_change,
+            ir_sets_earlier_request_during_resend,
             second_change_while_pending,
             both_changes_lost,
             first_applied_second_lost,

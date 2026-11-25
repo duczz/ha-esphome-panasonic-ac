@@ -323,6 +323,8 @@ If a single setting always ends in `giving up`, the AC probably does not support
 
 While a command is unconfirmed, the swing selects and the switches keep showing the requested state. Set `command_retries: 0` to turn all of this off.
 
+Verified on a Panasonic CS-Z50UFEAW (outdoor unit CU-Z50UBEA) with fan, vertical swing, nanoeX and preset changes. Other models may report some settings differently.
+
 ---
 
 ## 🔧 Hardware installation

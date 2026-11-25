@@ -4,7 +4,7 @@
 
 ### ✨ New Features
 
-- **Command Confirmation (CNT)** — Every command is now kept until the AC confirms the requested state (for at most 5 minutes), and resent if it still reports the old one. If the AC reports a third state, for example because the IR remote was used, the retry is dropped and the external change wins. Resends, confirmations after a resend and giving up are visible at the default log level.
+- **Command Confirmation (CNT)** — Every command is now kept until the AC confirms the requested state (for at most 5 minutes), and resent if it still reports the old one. If the AC reports a third state, for example because the IR remote was used, the retry is dropped and the external change wins. Resends, confirmations after a resend and giving up are visible at the default log level. Verified on a Panasonic CS-Z50UFEAW (outdoor unit CU-Z50UBEA) over CN-CNT: fan, vertical swing, nanoeX and preset changes were confirmed by the AC. Mode, target temperature, Econavi, mild dry and Eco were not changed in that test. It is on by default, `command_retries: 0` turns it off.
 - **`command_retries` and `command_confirm_delay` (CNT)** — Two optional settings for the new command verification. `command_retries` (0 to 10, default `5`) sets how often an unconfirmed command is resent, `0` restores the old behaviour. `command_confirm_delay` (`250ms` to `5s`, default `1s`) sets how long after a command the AC is polled to verify it, instead of waiting up to 5 s for the next regular poll. That poll is repeated up to 5 times while the AC stays silent.
 
 ### 🐛 Bug Fixes
