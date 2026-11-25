@@ -222,6 +222,15 @@ void PanasonicACCNT::loop() {
       this->rx_buffer_.erase(this->rx_buffer_.begin(), this->rx_buffer_.begin() + start);
     }
 
+    // On some CN-CNT wirings the line returns our own request verbatim while the AC is busy. Such an echo has a
+    // valid header/length/checksum but all-zero fields and would be decoded as "off, 0 degrees". Ignore it and
+    // keep waiting for the real reply (waiting_for_response_ stays set).
+    if (this->rx_buffer_ == this->last_tx_packet_) {
+      ESP_LOGD(TAG, "Ignoring echo of our own packet");
+      this->rx_buffer_.clear();
+      return;
+    }
+
     if (!verify_packet())  // Verify length, header, counter and checksum
       return;
 
@@ -457,6 +466,7 @@ void PanasonicACCNT::send_packet(const std::vector<uint8_t> &packet, CommandType
   if (type != CommandType::Response)     // Don't wait for a response for responses
     this->waiting_for_response_ = true;  // Mark that we are waiting for a response
 
+  this->last_tx_packet_ = packet;  // Remember it so an echoed copy can be recognised and ignored
   write_array(packet);       // Write to UART
   log_packet(packet, true);  // Write to log
 }
@@ -476,6 +486,9 @@ void PanasonicACCNT::handle_cmd() {
   if (!this->cmd.empty() && millis() - this->last_packet_sent_ > CMD_INTERVAL) {
     ESP_LOGV(TAG, "Sending Command");
     send_command(this->cmd, CommandType::Normal, CTRL_HEADER);
+    // Assume the command was applied until the next poll reports the real state. Otherwise a follow-up control()
+    // before that poll would copy the stale state from this->data into cmd and revert this command.
+    this->data = this->cmd;
     this->cmd.clear();
   }
 }
