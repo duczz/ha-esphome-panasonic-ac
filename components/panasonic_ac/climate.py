@@ -48,6 +48,8 @@ CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
 CONF_INSIDE_TEMPERATURE = "inside_temperature"
 CONF_DEFROST_SENSOR = "defrost_sensor"
 CONF_COMPRESSOR_ACTION = "compressor_action"
+CONF_COMMAND_RETRIES = "command_retries"
+CONF_COMMAND_CONFIRM_DELAY = "command_confirm_delay"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
 
@@ -86,6 +88,11 @@ PANASONIC_COMMON_SCHEMA = {
 
 PANASONIC_CNT_SCHEMA = {
     cv.Optional(CONF_COMPRESSOR_ACTION, default=False): cv.boolean,
+    cv.Optional(CONF_COMMAND_RETRIES, default=5): cv.int_range(min=0, max=10),
+    cv.Optional(CONF_COMMAND_CONFIRM_DELAY, default="1s"): cv.All(
+        cv.positive_time_period_milliseconds,
+        cv.Range(min=cv.TimePeriod(milliseconds=250), max=cv.TimePeriod(seconds=5)),
+    ),
     cv.Optional(CONF_ECO_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_ECONAVI_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_MILD_DRY_SWITCH): SWITCH_SCHEMA,
@@ -154,6 +161,12 @@ async def to_code(config):
 
     if CONF_COMPRESSOR_ACTION in config:
         cg.add(var.set_compressor_action(config[CONF_COMPRESSOR_ACTION]))
+
+    if CONF_COMMAND_RETRIES in config:
+        cg.add(var.set_command_retries(config[CONF_COMMAND_RETRIES]))
+
+    if CONF_COMMAND_CONFIRM_DELAY in config:
+        cg.add(var.set_command_confirm_delay(config[CONF_COMMAND_CONFIRM_DELAY]))
 
     if CONF_CURRENT_POWER_CONSUMPTION in config:
         sens = await sensor.new_sensor(config[CONF_CURRENT_POWER_CONSUMPTION])
