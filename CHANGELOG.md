@@ -1,10 +1,18 @@
 # Changelog
 
-## [Unreleased]
+## [2.6.5] – 2026-11-25
+
+A bug-fix release for CN-CNT setups (CZ-TACG1). WLAN (DNSK-P11) is unaffected.
 
 ### 🐛 Bug Fixes
 
 - **CN-CNT: Valid Poll Reply Dropped When Noise Bytes Precede It** — With TX→RX crosstalk in the wiring (e.g. a level shifter echoing our own poll back as distorted bytes), the echo and the real reply ended up in one read buffer. `verify_packet()` then rejected the whole buffer (`Dropping invalid packet (length mismatch)`), so the component never reached the ready state. The receive path now skips leading bytes up to the first complete packet (header, matching length byte, zero checksum). A buffer that already is a complete packet is left untouched, and the skipped byte count is logged at `VERBOSE`. **Affected:** CN-CNT setups with leading noise before the reply; clean setups behave as before. Fixing the wiring is still the better cure. Checked offline against constructed packets, not yet on real hardware.
+- **CN-CNT: Echo of Our Own Packet Shown as "Off, 0 °C"** — On some wirings the line returns the request we just sent, byte for byte, while the indoor unit is busy. The echoed poll (`70 0A 00 … 86`) is a well-formed packet, so it was decoded as mode off / 0 °C and the climate entity flipped for one or two poll intervals. The component now remembers the last transmitted packet and ignores an identical received one (logged at `DEBUG`). **Affected:** CN-CNT setups that echo; others behave as before. Not yet tested on real hardware.
+- **CN-CNT: Quick Follow-up Command Reverted the First One** — A second `control()` call arriving after the first command was sent but before the AC's reply was processed (~100–180 ms) was built from the stale state and silently undid the first, e.g. `set_hvac_mode: heat` followed by `set_temperature` (as sent by the HomeKit bridge) switched the unit on and straight off again. After sending, the sent command is now stored as the current state; the next poll still overwrites it with the real one, so a rejected command is corrected. Not yet tested on real hardware.
+
+### 📖 Documentation
+
+- **External Temperature Sensor From Home Assistant** — README and `ac.yaml.example` now show how to feed a Home Assistant sensor into `current_temperature_sensor` (via a `homeassistant` platform sensor with an `id`; `entity_id` is not accepted there).
 
 ## [2.6.4] – 2026-11-21
 
