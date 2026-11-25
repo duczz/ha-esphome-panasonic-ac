@@ -92,7 +92,9 @@ climate:
     #   name: "Outside Temperature Offset"
 
     # Use an external sensor for current temperature (CZ-TACG1 only)
-    # current_temperature_sensor: temperature_sensor_id
+    # Takes the ESPHome `id` of a sensor, NOT a Home Assistant entity_id.
+    # To use an HA sensor, define it in the `sensor:` section below (needs `api:`).
+    # current_temperature_sensor: ha_room_temp
 
     # Show the real compressor state as the climate action (Cooling/Heating/Idle)
     # instead of the temperature guess (CZ-TACG1 only). Off by default; falls back
@@ -131,9 +133,16 @@ climate:
               else if (preset == "Auto Comfort") id(preset_select).publish_state("Auto Comfort");
             }
 
-# Daily energy in kWh, derived from the power sensor above.
-# Requires `id:` on current_power_consumption and the time component at the bottom.
+# Optional sensors. Uncomment only the entries you need, all under ONE `sensor:` key.
 # sensor:
+#   # Home Assistant sensor as external temperature (see current_temperature_sensor above).
+#   - platform: homeassistant
+#     id: ha_room_temp
+#     entity_id: sensor.living_room_temperature   # replace with your HA sensor
+#     # attribute: current_temperature            # only if the value is an attribute, e.g. of a climate.* entity
+#
+#   # Daily energy in kWh, derived from the power sensor above.
+#   # Requires `id:` on current_power_consumption and the time component at the bottom.
 #   - platform: total_daily_energy
 #     name: "Total Daily Energy"
 #     power_id: ac_power

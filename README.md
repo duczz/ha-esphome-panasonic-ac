@@ -292,6 +292,27 @@ With `current_temperature_sensor` (CNT only) the climate entity uses any other H
 * the sensor has not published a value yet (this is the normal state right after boot),
 * its value is `NaN` (typical for an unavailable sensor).
 
+To use a sensor that lives in Home Assistant, first pull it into ESPHome with `platform: homeassistant` and give it an `id`. Then pass that **`id`** (not the HA `entity_id`) to `current_temperature_sensor`:
+
+```yaml
+api:                      # required, the ESP subscribes to the HA sensor through the API
+
+sensor:
+  - platform: homeassistant
+    id: ha_room_temp
+    entity_id: sensor.living_room_temperature   # replace with your HA sensor
+
+climate:
+  - platform: panasonic_ac
+    type: cnt
+    name: "Panasonic AC"
+    current_temperature_sensor: ha_room_temp    # the id from above, not the entity_id
+```
+
+* Writing the `entity_id` (e.g. `sensor.living_room_temperature`) directly into `current_temperature_sensor` fails the config check, because IDs cannot contain a `.`.
+* If the temperature is an attribute of another entity (e.g. a `climate.*` entity) instead of its main state, add `attribute: current_temperature` to the `homeassistant` sensor block.
+* `homeassistant` sensors are internal by default, so the sensor is not published back to Home Assistant and you do not need `internal: true`.
+
 > **The offset is applied to the external sensor too.** `current_temperature_offset` is added on top of whatever value the external sensor reports, not only to the AC's internal reading. If you already use a calibrated external sensor, leave the offset at `0` — otherwise you shift an already correct value a second time.
 
 #### Implausible readings are discarded
