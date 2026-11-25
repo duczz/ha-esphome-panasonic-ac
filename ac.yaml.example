@@ -101,6 +101,12 @@ climate:
     # automatically if your AC model reports an unexpected value.
     # compressor_action: true
 
+    # Verify commands and resend them if the AC does not report them back
+    # (CZ-TACG1 only). On by default, 0 disables it.
+    # command_retries: 5
+    # Delay before the extra poll that verifies a command (CZ-TACG1 only)
+    # command_confirm_delay: 1s
+
     # Sync template selects below when AC state changes
     on_state:
       then:

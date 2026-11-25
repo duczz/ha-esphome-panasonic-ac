@@ -168,6 +168,16 @@ static bool determine_mild_dry(uint8_t value) {
   }
 }
 
+// Compare the bytes we control: mode, target temp, mild dry, fan, swing, preset/nanoex/econavi and eco.
+// The remaining bytes are unknown or status and may change on their own.
+static bool is_same_state(const std::vector<uint8_t> &a, const std::vector<uint8_t> &b) {
+  for (uint8_t i : {0, 1, 2, 3, 4, 5, 8}) {
+    if (a[i] != b[i])
+      return false;
+  }
+  return true;
+}
+
 static uint16_t determine_power_consumption(uint8_t byte_28, uint8_t byte_29, uint8_t offset) {
   return (uint16_t) (byte_28 + (byte_29 * 256)) - offset;
 }
@@ -241,6 +251,7 @@ void PanasonicACCNT::loop() {
 
     this->rx_buffer_.clear();  // Reset buffer
   }
+  expire_cmd_();
   handle_cmd();
   handle_poll();  // Handle sending poll packets
 }
@@ -255,7 +266,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
 
   if (this->cmd.empty()) {
     ESP_LOGV(TAG, "Copying data to cmd");
-    this->cmd = this->data;
+    this->cmd = this->cmd_base_();
   }
 
   if (call.get_mode().has_value()) {
@@ -294,7 +305,9 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
   if (call.has_custom_fan_mode()) {
     ESP_LOGV(TAG, "Requested fan mode change");
 
-    if (this->get_custom_preset() != "Normal") {
+    // The published preset lags behind while a command is unconfirmed
+    if (this->get_custom_preset() != "Normal" ||
+        (!this->pending_cmd_.empty() && StringRef(determine_preset(this->cmd[5])) != "Normal")) {
       ESP_LOGV(TAG, "Resetting preset");
       this->cmd[5] = (this->cmd[5] & 0xD0);  // Clear preset nibble + Auto Comfort bit
     }
@@ -370,10 +383,16 @@ void PanasonicACCNT::set_data(bool set) {
   StringRef horizontalSwing(determine_horizontal_swing(this->data[4]));
 
   const char *preset = determine_preset(this->data[5]);
-  bool nanoex = determine_preset_nanoex(this->data[5]);
-  bool eco = determine_eco(this->data[8]);
-  bool econavi = determine_econavi(this->data[5]);
-  bool mildDry = determine_mild_dry(this->data[2]);
+
+  // Selects and switches ignore a change to the state they already show. Show the requested state while a command
+  // is in flight, otherwise reverting it would be ignored and the retry would still apply it.
+  const std::vector<uint8_t> &shown =
+      !this->cmd_in_flight_() ? this->data : (this->cmd.empty() ? this->pending_cmd_ : this->cmd);
+
+  bool nanoex = determine_preset_nanoex(shown[5]);
+  bool eco = determine_eco(shown[8]);
+  bool econavi = determine_econavi(shown[5]);
+  bool mildDry = determine_mild_dry(shown[2]);
 
   this->update_target_temperature(this->data[1]);
 
@@ -428,8 +447,8 @@ void PanasonicACCNT::set_data(bool set) {
   else
     this->swing_mode = climate::CLIMATE_SWING_OFF;
 
-  this->update_swing_vertical(verticalSwing);
-  this->update_swing_horizontal(horizontalSwing);
+  this->update_swing_vertical(StringRef(determine_vertical_swing(shown[4])));
+  this->update_swing_horizontal(StringRef(determine_horizontal_swing(shown[4])));
 
   this->set_custom_preset_(preset);
 
@@ -476,21 +495,140 @@ void PanasonicACCNT::send_packet(const std::vector<uint8_t> &packet, CommandType
  */
 
 void PanasonicACCNT::handle_poll() {
-  if (millis() - this->last_packet_sent_ > POLL_INTERVAL) {
+  const uint32_t now = millis();
+  // Verify a command early instead of waiting for the next regular poll
+  const bool confirm = this->confirm_polls_left_ > 0 && now - this->last_packet_sent_ > CMD_INTERVAL &&
+                       now - this->last_packet_sent_ >= this->command_confirm_delay_;
+
+  if (confirm || now - this->last_packet_sent_ > POLL_INTERVAL) {
     ESP_LOGV(TAG, "Polling AC");
     send_command(CMD_POLL, CommandType::Normal, POLL_HEADER);
+    this->polled_since_cmd_ = true;
+    if (this->confirm_polls_left_ > 0)
+      this->confirm_polls_left_--;
   }
 }
 
 void PanasonicACCNT::handle_cmd() {
   if (!this->cmd.empty() && millis() - this->last_packet_sent_ > CMD_INTERVAL) {
     ESP_LOGV(TAG, "Sending Command");
+    this->track_cmd_();
     send_command(this->cmd, CommandType::Normal, CTRL_HEADER);
     // Assume the command was applied until the next poll reports the real state. Otherwise a follow-up control()
     // before that poll would copy the stale state from this->data into cmd and revert this command.
     this->data = this->cmd;
     this->cmd.clear();
   }
+}
+
+/*
+ * Command verification, the AC does not acknowledge commands so a poll response is the only confirmation
+ */
+
+const std::vector<uint8_t> &PanasonicACCNT::cmd_base_() const {
+  // Start from the unconfirmed command, so a second change does not undo it
+  return this->pending_cmd_.empty() ? this->data : this->pending_cmd_;
+}
+
+bool PanasonicACCNT::cmd_in_flight_() const {
+  return this->command_retries_ > 0 && (!this->cmd.empty() || !this->pending_cmd_.empty());
+}
+
+bool PanasonicACCNT::is_stale_state_(const std::vector<uint8_t> &state) const {
+  for (const auto &stale : this->stale_states_) {
+    if (is_same_state(state, stale))
+      return true;
+  }
+  return false;
+}
+
+void PanasonicACCNT::add_stale_state_(const std::vector<uint8_t> &state) {
+  if (this->is_stale_state_(state))
+    return;
+  if (this->stale_states_.size() >= MAX_STALE_STATES)
+    this->stale_states_.erase(this->stale_states_.begin());
+  this->stale_states_.push_back(state);
+}
+
+void PanasonicACCNT::track_cmd_() {
+  if (this->command_retries_ == 0)
+    return;
+
+  if (this->cmd != this->pending_cmd_) {
+    // The AC may have missed both commands or only this one
+    this->add_stale_state_(this->data);
+    if (!this->pending_cmd_.empty())
+      this->add_stale_state_(this->pending_cmd_);
+  }
+
+  if (!this->resend_queued_ || this->cmd != this->pending_cmd_) {  // A new request, not a resend
+    this->pending_cmd_ = this->cmd;
+    this->pending_since_ = millis();
+    this->cmd_resends_ = 0;
+  }
+
+  this->resend_queued_ = false;
+  this->polled_since_cmd_ = false;  // Ignore the response to a poll sent before this command
+  this->confirm_polls_left_ = MAX_CONFIRM_POLLS;
+}
+
+void PanasonicACCNT::verify_cmd_() {
+  if (this->pending_cmd_.empty())
+    return;
+
+  // The AC answers a control frame it received with its new state. Everything else, including a match that can just
+  // as well be the state from before the command, needs a poll sent after the command.
+  if (!this->polled_since_cmd_ &&
+      (!is_same_state(this->data, this->pending_cmd_) || this->is_stale_state_(this->pending_cmd_)))
+    return;
+
+  this->confirm_polls_left_ = 0;  // The AC answered, back to the regular poll interval
+
+  if (!this->cmd.empty())  // A newer change is about to replace the pending command
+    return;
+
+  if (is_same_state(this->data, this->pending_cmd_)) {
+    if (this->cmd_resends_ > 0) {
+      ESP_LOGI(TAG, "Command confirmed after %u resend(s)", this->cmd_resends_);
+    }
+    this->clear_pending_cmd_();
+    return;
+  }
+
+  if (!this->is_stale_state_(this->data)) {
+    // Somebody else changed the AC, eg. via the IR remote, a resend would override that
+    ESP_LOGI(TAG, "AC state changed externally while a command was pending, dropping retry");
+    this->clear_pending_cmd_();
+    return;
+  }
+
+  if (this->cmd_resends_ >= this->command_retries_) {
+    ESP_LOGE(TAG, "AC did not apply last command after %u resend(s), giving up", this->cmd_resends_);
+    this->clear_pending_cmd_();
+    return;
+  }
+
+  this->cmd_resends_++;
+  ESP_LOGW(TAG, "AC did not apply last command, resending (%u/%u)", this->cmd_resends_, this->command_retries_);
+  this->stale_states_.assign(1, this->data);  // From here on only this exact state counts as not applied
+  this->cmd = this->pending_cmd_;
+  this->resend_queued_ = true;
+}
+
+void PanasonicACCNT::expire_cmd_() {
+  if (this->pending_cmd_.empty() || !this->cmd.empty() || millis() - this->pending_since_ < MAX_COMMAND_AGE)
+    return;
+
+  // The AC state is unknown for too long, applying the command later would come as a surprise
+  ESP_LOGE(TAG, "AC did not answer for too long, dropping last command");
+  this->clear_pending_cmd_();
+}
+
+void PanasonicACCNT::clear_pending_cmd_() {
+  this->pending_cmd_.clear();
+  this->stale_states_.clear();
+  this->cmd_resends_ = 0;
+  this->confirm_polls_left_ = 0;
 }
 
 /*
@@ -541,6 +679,7 @@ void PanasonicACCNT::handle_packet() {
   if (this->rx_buffer_[0] == POLL_HEADER) {
     this->data = std::vector<uint8_t>(this->rx_buffer_.begin() + 2, this->rx_buffer_.begin() + 12);
 
+    this->verify_cmd_();
     this->set_data(true);
     this->action = determine_action();
     this->publish_state();
@@ -562,9 +701,12 @@ void PanasonicACCNT::on_vertical_swing_change(const StringRef &swing) {
 
   ESP_LOGD(TAG, "Setting vertical swing position");
 
+  if (this->command_retries_ > 0)  // Remember the request, so reverting it before the next poll is not ignored
+    this->vertical_swing_state_ = this->vertical_swing_select_->active_index().value_or(~0UL);
+
   if (this->cmd.empty()) {
     ESP_LOGV(TAG, "Copying data to cmd");
-    this->cmd = this->data;
+    this->cmd = this->cmd_base_();
   }
 
   if (swing == "down")
@@ -593,9 +735,12 @@ void PanasonicACCNT::on_horizontal_swing_change(const StringRef &swing) {
 
   ESP_LOGD(TAG, "Setting horizontal swing position");
 
+  if (this->command_retries_ > 0)  // Remember the request, so reverting it before the next poll is not ignored
+    this->horizontal_swing_state_ = this->horizontal_swing_select_->active_index().value_or(~0UL);
+
   if (this->cmd.empty()) {
     ESP_LOGV(TAG, "Copying data to cmd");
-    this->cmd = this->data;
+    this->cmd = this->cmd_base_();
   }
 
   if (swing == "left")
@@ -622,7 +767,7 @@ void PanasonicACCNT::on_nanoex_change(bool state) {
 
   if (this->cmd.empty()) {
     ESP_LOGV(TAG, "Copying data to cmd");
-    this->cmd = this->data;
+    this->cmd = this->cmd_base_();
   }
 
   this->nanoex_state_ = state;
@@ -642,7 +787,7 @@ void PanasonicACCNT::on_eco_change(bool state) {
 
   if (this->cmd.empty()) {
     ESP_LOGV(TAG, "Copying data to cmd");
-    this->cmd = this->data;
+    this->cmd = this->cmd_base_();
   }
 
   this->eco_state_ = state;
@@ -662,7 +807,7 @@ void PanasonicACCNT::on_econavi_change(bool state) {
 
   if (this->cmd.empty()) {
     ESP_LOGV(TAG, "Copying data to cmd");
-    this->cmd = this->data;
+    this->cmd = this->cmd_base_();
   }
 
   this->econavi_state_ = state;
@@ -682,7 +827,7 @@ void PanasonicACCNT::on_mild_dry_change(bool state) {
 
   if (this->cmd.empty()) {
     ESP_LOGV(TAG, "Copying data to cmd");
-    this->cmd = this->data;
+    this->cmd = this->cmd_base_();
   }
 
   this->mild_dry_state_ = state;

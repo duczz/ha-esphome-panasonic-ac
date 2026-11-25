@@ -1,0 +1,45 @@
+# Runs the component on the ESPHome host platform, see test_cnt_retry.py
+substitutions:
+  command_retries: "5"
+  command_confirm_delay: 1s
+
+esphome:
+  name: cnt-retry-test
+  on_boot:
+    priority: 1100  # Before the UART opens its port
+    then:
+      - lambda: id(ac_uart).set_name(getenv("AC_PORT"));
+
+host:
+
+logger:
+  level: VERBOSE
+
+api:
+  port: 16053
+  reboot_timeout: 0s
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [panasonic_ac]
+
+uart:
+  id: ac_uart
+  port: /dev/null  # Replaced in on_boot
+  baud_rate: 9600
+  parity: EVEN
+
+climate:
+  - platform: panasonic_ac
+    type: cnt
+    name: AC
+    vertical_swing_select:
+      name: Vertical
+    eco_switch:
+      name: Eco
+    mild_dry_switch:
+      name: Mild Dry
+    command_retries: ${command_retries}
+    command_confirm_delay: ${command_confirm_delay}

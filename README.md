@@ -29,6 +29,7 @@ An open source alternative for the Panasonic wi-fi adapter that works locally wi
   - [Example configuration](#example-configuration)
   - [Daily energy consumption (kWh)](#daily-energy-consumption-kwh)
   - [Temperature offsets](#temperature-offsets)
+  - [Command verification (CNT)](#command-verification-cnt)
 - [Hardware installation](#-hardware-installation)
 
 ---
@@ -82,6 +83,7 @@ For a detailed list of all new features, bug fixes, and improvements, please che
 * Defrost status detection
 * Climate action (Cooling/Heating/Idle) from the AC's real compressor state (CNT, opt-in)
 * Auto Comfort preset (CNT)
+* Commands are verified and resent until the AC reports them back (CNT)
 * Power consumption monitoring (estimated by AC)
 * Fallback to internal sensor if external temperature sensor fails
 * Live temperature offset adjustment via Home Assistant sliders
@@ -168,6 +170,8 @@ Alternatively, add `refresh: always` to the `external_components` entry (on the 
 | `outside_temperature_offset_number` | Number | CNT + WLAN | Exposes a slider to Home Assistant to dynamically change the outside temperature offset |
 | `current_temperature_sensor` | Sensor ID | CNT only | Use an external sensor for current temperature instead of the AC's internal sensor (see [details](#using-an-external-temperature-sensor)) |
 | `compressor_action` | bool | CNT only | Derive the climate action (Cooling/Heating/Idle) from the AC's real compressor state instead of the temperature heuristic. Default `false`. Falls back automatically if the AC model reports an unexpected value. During a defrost cycle the action is reported as `Idle`, since the unit is not conditioning the room |
+| `command_retries` | int | CNT only | How often a command is resent if the AC does not report it back (0 to 10, default `5`). `0` disables the verification and sends every command exactly once (see [details](#command-verification-cnt)) |
+| `command_confirm_delay` | time | CNT only | Delay before the extra poll that verifies a command, repeated up to 5 times while the AC does not answer (`250ms` to `5s`, default `1s`) |
 
 > **Eco vs. Econavi:** Eco is a simple power reduction mode. Econavi is Panasonic's smart sensor feature that detects room activity (human presence, sunlight) and auto-adjusts power accordingly. They are independent features.
 
@@ -202,7 +206,7 @@ if (!fan_mode.empty() && fan_mode == "Automatic") { /* ... */ }
 
 The two swing selects are separate entities from the climate `swing_mode`: the selects set a fixed louver position, while `swing_mode` reports `vertical` / `horizontal` / `both` whenever the corresponding select is on `auto`.
 
-> **Update rate:** CZ-TACG1 (`type: cnt`) polls the AC every **5 seconds**, DNSK-P11 (`type: wlan`) every **30 seconds**. State changes made on the IR remote therefore show up noticeably faster on CNT. Commands you send are transmitted immediately on both.
+> **Update rate:** CZ-TACG1 (`type: cnt`) polls the AC every **5 seconds**, DNSK-P11 (`type: wlan`) every **30 seconds**. State changes made on the IR remote therefore show up noticeably faster on CNT. Commands you send are transmitted immediately on both. After a command, CNT polls again after `command_confirm_delay` to verify it.
 
 ### Example configuration
 
@@ -323,6 +327,24 @@ A temperature sensor that never updates is usually being filtered, not stuck. Tw
 * **Implausible value** — anything above 100 °C after the offset is discarded with a `Received out of range ...` warning, so the entity keeps its last good value instead of publishing nonsense.
 
 If a temperature looks frozen, set `logger: level: VERBOSE` and check which of the two messages appears.
+
+### Command verification (CNT)
+
+A command only counts as done when the AC reports the requested state. The component compares the state the AC reports with the command it sent (mode, target temperature, fan, swing, preset, nanoeX, Econavi, Eco and mild dry) and resends the command if the AC still reports the old state.
+
+| Log message | Level | Meaning |
+|---|---|---|
+| `AC did not apply last command, resending (1/5)` | `WARN` | The AC still reports the old state, the command is sent again |
+| `Command confirmed after 1 resend(s)` | `INFO` | The AC reports the requested state after a resend |
+| `AC did not apply last command after 5 resend(s), giving up` | `ERROR` | All resends were used up, the state reported by the AC is kept |
+| `AC state changed externally while a command was pending, dropping retry` | `INFO` | The AC reports neither the old nor the requested state, for example because the IR remote was used. The retry is dropped so it never overrides that change |
+| `AC did not answer for too long, dropping last command` | `ERROR` | The command could not be verified within 5 minutes, it is not sent again |
+
+If a single setting always ends in `giving up`, the AC probably does not support it.
+
+While a command is unconfirmed, the swing selects and the switches keep showing the requested state. Set `command_retries: 0` to turn all of this off.
+
+Verified on a Panasonic CS-Z50UFEAW (outdoor unit CU-Z50UBEA) with fan, vertical swing, nanoeX and preset changes. Other models may report some settings differently.
 
 ---
 
